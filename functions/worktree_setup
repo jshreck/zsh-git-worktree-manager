@@ -1,0 +1,179 @@
+function worktree_setup() {
+  # Parse options
+  local skip_yarn=false
+  local base_branch="main"
+  local branch_name=""
+  
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+      --skip-yarn) skip_yarn=true; shift ;;
+      --base=*) base_branch="${1#*=}"; shift ;;
+      --help|-h)
+        echo "Usage: worktree_setup [OPTIONS] <branch-name>"
+        echo ""
+        echo "Options:"
+        echo "  --skip-yarn       Skip yarn install step"
+        echo "  --base=<branch>   Base branch to create from (default: main)"
+        echo "  -h, --help        Show this help message"
+        echo ""
+        echo "Examples:"
+        echo "  worktree_setup feature/my-feature"
+        echo "  worktree_setup --skip-yarn bugfix/critical-fix"
+        echo "  worktree_setup --base=develop feature/new-thing"
+        return 0
+        ;;
+      *)
+        if [[ -z "$branch_name" ]]; then
+          branch_name="$1"
+        else
+          echo "❌ Error: Too many arguments"
+          echo "Run 'worktree_setup --help' for usage"
+          return 1
+        fi
+        shift
+        ;;
+    esac
+  done
+  
+  # Validate input
+  if [[ -z "$branch_name" ]]; then
+    echo "❌ Error: Branch/directory name required"
+    echo "Usage: worktree_setup <branch-name>"
+    echo "Run 'worktree_setup --help' for more options"
+    return 1
+  fi
+  
+  # Get the worktree root directory dynamically
+  local worktrees_dir=$(_get_worktree_root)
+  if [[ $? -ne 0 ]]; then
+    echo "⚠️  Warning: Could not auto-detect worktree root"
+    echo "Using current directory: $worktrees_dir"
+  fi
+  
+  # Check if main worktree exists
+  if [[ ! -d "$worktrees_dir/main" ]]; then
+    echo "❌ Error: 'main' worktree not found in $worktrees_dir"
+    echo "Please run this command from within a worktree directory structure"
+    return 1
+  fi
+  
+  # Check if worktree already exists
+  if [[ -d "$worktrees_dir/$branch_name" ]]; then
+    echo "❌ Error: Worktree '$branch_name' already exists at $worktrees_dir/$branch_name"
+    return 1
+  fi
+  
+  # Store current directory
+  local original_dir="$(pwd)"
+  
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🌳 Worktree Setup"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📂 Worktree root: $worktrees_dir"
+  echo "📍 Base: $base_branch"
+  echo "🌿 New branch: $branch_name"
+  echo "📂 Location: $worktrees_dir/$branch_name"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  
+  # Update base branch
+  echo "🔄 Updating $base_branch branch..."
+  cd "$worktrees_dir/main" || {
+    echo "❌ Error: Cannot access main worktree"
+    cd "$original_dir"
+    return 1
+  }
+  
+  git fetch origin && \
+  git checkout "$base_branch" && \
+  git pull origin "$base_branch" || {
+    echo "❌ Error: Failed to update $base_branch"
+    cd "$original_dir"
+    return 1
+  }
+  
+  echo "✅ $base_branch branch updated"
+  
+  # Create worktree
+  cd "$worktrees_dir" || return 1
+  echo ""
+  echo "🌳 Creating worktree..."
+  
+  # Skip Husky hooks during worktree creation to avoid errors when node_modules don't exist yet
+  if HUSKY_SKIP_HOOKS=1 git worktree add -b "$branch_name" "$branch_name" "$base_branch"; then
+    echo "✅ Worktree created"
+  else
+    echo "❌ Error: Failed to create worktree"
+    cd "$original_dir"
+    return 1
+  fi
+  
+  # Copy config files
+  echo ""
+  echo "📄 Copying configuration files..."
+  cd "$worktrees_dir/main" || return 1
+  
+  local file_count=0
+  local temp_tar="/tmp/worktree_setup_$$.tar"
+  
+  # Count files first
+  file_count=$(find . -type d -name node_modules -prune -o \
+    \( -name '*.env' -o -name 'key.pem' -o -name 'cert.pem' \) \
+    -type f -print | wc -l | tr -d ' ')
+  
+  if [[ "$file_count" -gt 0 ]]; then
+    echo "   Found $file_count configuration file(s)"
+    
+    find . -type d -name node_modules -prune -o \
+      \( -name '*.env' -o -name 'key.pem' -o -name 'cert.pem' \) \
+      -type f -print0 | tar -czf "$temp_tar" --null -T - 2>/dev/null
+    
+    cd "$worktrees_dir/$branch_name" || return 1
+    
+    if tar -xzf "$temp_tar" 2>/dev/null; then
+      echo "✅ Configuration files copied"
+    else
+      echo "⚠️  Warning: Some files may not have been copied"
+    fi
+    
+    rm -f "$temp_tar"
+  else
+    echo "⚠️  No configuration files found"
+  fi
+  
+  # Install dependencies
+  if [[ "$skip_yarn" == false ]]; then
+    echo ""
+    echo "📦 Installing dependencies..."
+    cd "$worktrees_dir/$branch_name" || return 1
+    
+    if yarn install; then
+      echo "✅ Dependencies installed"
+    else
+      echo "❌ Warning: yarn install failed"
+      echo "   You may need to run 'yarn install' manually"
+    fi
+  else
+    echo ""
+    echo "⏭️  Skipping yarn install (--skip-yarn flag set)"
+  fi
+  
+  # Navigate to new worktree
+  cd "$worktrees_dir/$branch_name" || return 1
+  
+  # Final message
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🎉 Worktree setup complete!"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📂 Location: $(pwd)"
+  echo "🌿 Branch: $(git branch --show-current)"
+  echo ""
+  echo "Next steps:"
+  echo "  • Start coding! 🚀"
+  if [[ "$skip_yarn" == true ]]; then
+    echo "  • Run 'yarn install' when ready"
+  fi
+  echo "  • When done: cd .. && git worktree remove $branch_name"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}

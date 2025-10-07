@@ -1,0 +1,196 @@
+# Review a PR by creating a worktree from the PR branch
+function pr_review() {
+  # Validate input
+  if [[ -z "$1" ]]; then
+    echo "❌ Error: GitHub PR URL required"
+    echo "Usage: pr_review <github-pr-url>"
+    echo ""
+    echo "Example:"
+    echo "  pr_review https://github.com/owner/repo/pull/123"
+    return 1
+  fi
+  
+  local pr_url="$1"
+  
+  # Check if gh CLI is installed
+  if ! command -v gh &>/dev/null; then
+    echo "❌ Error: GitHub CLI (gh) is not installed"
+    echo "   Install it with: brew install gh"
+    return 1
+  fi
+  
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📋 PR Review Setup"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  
+  # Extract PR information using gh CLI
+  echo "🔍 Fetching PR information..."
+  local pr_data
+  if ! pr_data=$(gh pr view "$pr_url" --json headRefName,number,title 2>&1); then
+    echo "❌ Error: Failed to fetch PR information"
+    echo "   $pr_data"
+    echo ""
+    echo "Make sure:"
+    echo "  • The URL is correct"
+    echo "  • You're authenticated with gh (run: gh auth login)"
+    echo "  • You have access to the repository"
+    return 1
+  fi
+  
+  # Parse PR data
+  local remote_branch_name=$(echo "$pr_data" | grep -o '"headRefName":"[^"]*"' | cut -d'"' -f4)
+  local pr_number=$(echo "$pr_data" | grep -o '"number":[0-9]*' | cut -d':' -f2)
+  local pr_title=$(echo "$pr_data" | grep -o '"title":"[^"]*"' | sed 's/"title":"//' | sed 's/"$//')
+  
+  if [[ -z "$remote_branch_name" ]]; then
+    echo "❌ Error: Could not extract branch name from PR"
+    return 1
+  fi
+  
+  echo "✅ PR information retrieved"
+  echo ""
+  echo "   PR #$pr_number: $pr_title"
+  echo "   Branch: $remote_branch_name"
+  echo ""
+  
+  # Setup variables
+  local local_branch_name="pr-$remote_branch_name"
+  local worktrees_dir=$(_get_worktree_root)
+  
+  if [[ $? -ne 0 ]]; then
+    echo "⚠️  Warning: Could not auto-detect worktree root"
+    echo "Using current directory: $worktrees_dir"
+  fi
+  
+  # Check if main worktree exists
+  if [[ ! -d "$worktrees_dir/main" ]]; then
+    echo "❌ Error: 'main' worktree not found in $worktrees_dir"
+    echo "Please run this command from within a worktree directory structure"
+    return 1
+  fi
+  
+  # Check if worktree already exists
+  if [[ -d "$worktrees_dir/$local_branch_name" ]]; then
+    echo "❌ Error: Worktree '$local_branch_name' already exists at $worktrees_dir/$local_branch_name"
+    echo "   Remove it first with: worktree_remove $local_branch_name"
+    return 1
+  fi
+  
+  # Store current directory
+  local original_dir="$(pwd)"
+  
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📂 Worktree root: $worktrees_dir"
+  echo "🌿 Local branch: $local_branch_name"
+  echo "🔗 Remote branch: origin/$remote_branch_name"
+  echo "📂 Location: $worktrees_dir/$local_branch_name"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  
+  # Fetch remote branch
+  echo "⬇️  Fetching remote branch..."
+  cd "$worktrees_dir/main" || {
+    echo "❌ Error: Cannot access main worktree"
+    cd "$original_dir"
+    return 1
+  }
+  
+  if git fetch origin "$remote_branch_name"; then
+    echo "✅ Remote branch fetched"
+  else
+    echo "❌ Error: Failed to fetch remote branch '$remote_branch_name'"
+    cd "$original_dir"
+    return 1
+  fi
+  
+  # Create worktree
+  cd "$worktrees_dir" || return 1
+  echo ""
+  echo "🌳 Creating worktree..."
+  
+  # Skip Husky hooks during worktree creation
+  if HUSKY_SKIP_HOOKS=1 git worktree add -b "$local_branch_name" "$local_branch_name" "origin/$remote_branch_name"; then
+    echo "✅ Worktree created"
+  else
+    echo "❌ Error: Failed to create worktree"
+    cd "$original_dir"
+    return 1
+  fi
+  
+  # Set upstream tracking
+  echo ""
+  echo "🔗 Setting upstream tracking..."
+  cd "$worktrees_dir/$local_branch_name" || return 1
+  
+  if git branch --set-upstream-to=origin/$remote_branch_name; then
+    echo "✅ Upstream set to origin/$remote_branch_name"
+  else
+    echo "⚠️  Warning: Failed to set upstream tracking"
+  fi
+  
+  # Copy config files
+  echo ""
+  echo "📄 Copying configuration files..."
+  cd "$worktrees_dir/main" || return 1
+  
+  local file_count=0
+  local temp_tar="/tmp/pr_review_$$.tar"
+  
+  # Count files first
+  file_count=$(find . -type d -name node_modules -prune -o \
+    \( -name '*.env' -o -name 'key.pem' -o -name 'cert.pem' \) \
+    -type f -print | wc -l | tr -d ' ')
+  
+  if [[ "$file_count" -gt 0 ]]; then
+    echo "   Found $file_count configuration file(s)"
+    
+    find . -type d -name node_modules -prune -o \
+      \( -name '*.env' -o -name 'key.pem' -o -name 'cert.pem' \) \
+      -type f -print0 | tar -czf "$temp_tar" --null -T - 2>/dev/null
+    
+    cd "$worktrees_dir/$local_branch_name" || return 1
+    
+    if tar -xzf "$temp_tar" 2>/dev/null; then
+      echo "✅ Configuration files copied"
+    else
+      echo "⚠️  Warning: Some files may not have been copied"
+    fi
+    
+    rm -f "$temp_tar"
+  else
+    echo "⚠️  No configuration files found"
+  fi
+  
+  # Install dependencies
+  echo ""
+  echo "📦 Installing dependencies..."
+  cd "$worktrees_dir/$local_branch_name" || return 1
+  
+  if yarn install; then
+    echo "✅ Dependencies installed"
+  else
+    echo "❌ Warning: yarn install failed"
+    echo "   You may need to run 'yarn install' manually"
+  fi
+  
+  # Navigate to new worktree
+  cd "$worktrees_dir/$local_branch_name" || return 1
+  
+  # Final message
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🎉 PR Review worktree ready!"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📋 PR #$pr_number"
+  echo "📂 Location: $(pwd)"
+  echo "🌿 Branch: $(git branch --show-current)"
+  echo "🔗 Tracking: origin/$remote_branch_name"
+  echo ""
+  echo "Next steps:"
+  echo "  • Review the PR code! 🔍"
+  echo "  • Run tests if needed"
+  echo "  • Pull updates: git pull"
+  echo "  • When done: cd .. && worktree_remove $local_branch_name"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}

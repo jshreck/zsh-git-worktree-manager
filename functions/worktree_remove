@@ -1,0 +1,71 @@
+# Remove a worktree with confirmation
+function worktree_remove() {
+  if [[ -z "$1" ]]; then
+    echo "❌ Error: Worktree name required"
+    echo "Usage: worktree_remove <worktree-name>"
+    return 1
+  fi
+  
+  local worktree_name="$1"
+  
+  # Protect main worktree from deletion
+  if [[ "$worktree_name" == "main" ]]; then
+    echo "❌ Error: Cannot remove 'main' worktree - it is protected"
+    return 1
+  fi
+  
+  # Get the branch name associated with this worktree before removing it
+  local branch_name=$(git worktree list --porcelain | \
+    awk -v wt="$worktree_name" '
+      /^worktree/ { path = $2; gsub(/.*\//, "", path) }
+      /^branch/ { branch = $2; gsub(/^refs\/heads\//, "", branch) }
+      /^$/ { if (path == wt) { print branch; exit } }
+    ')
+  
+  echo "⚠️  Are you sure you want to remove worktree '$worktree_name'? (y/N)"
+  read -r response
+  
+  if [[ "$response" =~ ^[Yy]$ ]]; then
+    if git worktree remove "$worktree_name"; then
+      echo "✅ Worktree '$worktree_name' removed"
+      
+      # Check if the branch still exists and offer to delete it
+      if [[ -n "$branch_name" ]] && git show-ref --verify --quiet "refs/heads/$branch_name"; then
+        echo ""
+        echo "🌿 Branch '$branch_name' still exists."
+        echo "⚠️  Do you want to delete the branch '$branch_name'? (y/N)"
+        read -r branch_response
+        
+        if [[ "$branch_response" =~ ^[Yy]$ ]]; then
+          # Try normal deletion first
+          if git branch -d "$branch_name" 2>/dev/null; then
+            echo "✅ Branch '$branch_name' deleted"
+          else
+            # If normal deletion fails, offer force deletion
+            echo "⚠️  Branch '$branch_name' has unmerged changes."
+            echo "   Force delete? This will permanently lose any unmerged commits. (y/N)"
+            read -r force_response
+            
+            if [[ "$force_response" =~ ^[Yy]$ ]]; then
+              if git branch -D "$branch_name"; then
+                echo "✅ Branch '$branch_name' force deleted"
+              else
+                echo "❌ Error: Failed to delete branch '$branch_name'"
+                return 1
+              fi
+            else
+              echo "ℹ️  Branch '$branch_name' kept (you can delete it later with: git branch -d $branch_name)"
+            fi
+          fi
+        else
+          echo "ℹ️  Branch '$branch_name' kept (you can delete it later with: git branch -d $branch_name)"
+        fi
+      fi
+    else
+      echo "❌ Error: Failed to remove worktree '$worktree_name'"
+      return 1
+    fi
+  else
+    echo "❌ Cancelled"
+  fi
+}

@@ -1,0 +1,28 @@
+# Helper function to find the worktree root directory
+function _get_worktree_root() {
+  local current_dir="$(pwd)"
+  
+  # Try to get git worktree info
+  if git rev-parse --git-common-dir &>/dev/null; then
+    # We're in a git worktree, get the parent directory
+    local git_common_dir=$(git rev-parse --git-common-dir)
+    # Navigate to the worktrees parent directory
+    local worktree_root=$(cd "$git_common_dir/.." && pwd)
+    echo "$worktree_root"
+    return 0
+  fi
+  
+  # Fallback: look for a 'main' directory in current or parent directories
+  local search_dir="$current_dir"
+  for i in {1..3}; do
+    if [[ -d "$search_dir/main/.git" ]]; then
+      echo "$search_dir"
+      return 0
+    fi
+    search_dir=$(dirname "$search_dir")
+  done
+  
+  # If we can't find it, use current directory
+  echo "$current_dir"
+  return 1
+}

@@ -1,0 +1,16 @@
+# Quick navigation to worktrees
+function wt() {
+  local worktrees_dir=$(_get_worktree_root)
+  
+  if [[ -z "$1" ]]; then
+    cd "$worktrees_dir" || {
+      echo "❌ Could not navigate to worktree root"
+      return 1
+    }
+  else
+    cd "$worktrees_dir/$1" || {
+      echo "❌ Worktree '$1' not found in $worktrees_dir"
+      return 1
+    }
+  fi
+}

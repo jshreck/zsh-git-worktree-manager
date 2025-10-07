@@ -1,0 +1,94 @@
+# Pull latest changes for current worktree
+function worktree_pull() {
+  # Check if we're in a git repository
+  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    echo "❌ Error: Not in a git repository"
+    return 1
+  fi
+  
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🔄 Pulling latest changes in worktree"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📂 Location: $(pwd)"
+  
+  # Get current branch
+  local current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  
+  # Check if we're in detached HEAD state
+  if [[ "$current_branch" == "HEAD" ]]; then
+    echo "⚠️  Warning: You are in a detached HEAD state"
+    echo "   Cannot pull changes in detached HEAD state"
+    echo "   Please checkout a branch first: git checkout <branch-name>"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    return 1
+  fi
+  
+  echo "🌿 Branch: $current_branch"
+  
+  # Check if branch has a remote tracking branch
+  if ! git rev-parse --abbrev-ref --symbolic-full-name @{u} &>/dev/null; then
+    echo "⚠️  Warning: Branch '$current_branch' has no remote tracking branch"
+    echo "   You can set upstream with: git push -u origin $current_branch"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    return 1
+  fi
+  
+  local upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u})
+  echo "⬆️  Upstream: $upstream"
+  echo ""
+  
+  # Check for uncommitted changes
+  local has_changes=false
+  if [[ -n $(git status --porcelain) ]]; then
+    has_changes=true
+    echo "📦 Stashing uncommitted changes..."
+    if git stash push -m "worktree_pull auto-stash $(date +'%Y-%m-%d %H:%M:%S')" &>/dev/null; then
+      echo "✅ Changes stashed"
+    else
+      echo "❌ Error: Failed to stash changes"
+      return 1
+    fi
+    echo ""
+  fi
+  
+  # Fetch from remote
+  echo "⬇️  Fetching from remote..."
+  if git fetch origin; then
+    echo "✅ Fetch complete"
+  else
+    echo "❌ Error: Failed to fetch from remote"
+    return 1
+  fi
+  echo ""
+  
+  # Pull changes
+  echo "🔄 Pulling changes..."
+  if git pull; then
+    echo "✅ Pull complete"
+  else
+    echo "❌ Error: Failed to pull changes"
+    if [[ "$has_changes" == true ]]; then
+      echo "⚠️  Your changes are still stashed. Pop them with: git stash pop"
+    fi
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    return 1
+  fi
+  echo ""
+  
+  # Pop stashed changes if any
+  if [[ "$has_changes" == true ]]; then
+    echo "📦 Restoring stashed changes..."
+    if git stash pop &>/dev/null; then
+      echo "✅ Changes restored"
+    else
+      echo "⚠️  Warning: Conflicts when restoring stashed changes"
+      echo "   Please resolve conflicts and run: git stash drop"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      return 1
+    fi
+  fi
+  
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🎉 Successfully pulled latest changes!"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
