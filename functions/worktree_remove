@@ -15,12 +15,10 @@ function worktree_remove() {
   fi
   
   # Get the branch name associated with this worktree before removing it
+  # Using grep + awk is faster than complex awk pattern matching
   local branch_name=$(git worktree list --porcelain | \
-    awk -v wt="$worktree_name" '
-      /^worktree/ { path = $2; gsub(/.*\//, "", path) }
-      /^branch/ { branch = $2; gsub(/^refs\/heads\//, "", branch) }
-      /^$/ { if (path == wt) { print branch; exit } }
-    ')
+    grep -A 2 "worktree.*/${worktree_name}$" | \
+    awk '/^branch/ { sub(/^refs\/heads\//, "", $2); print $2; exit }')
   
   echo "⚠️  Are you sure you want to remove worktree '$worktree_name'? (y/N)"
   read -r response
