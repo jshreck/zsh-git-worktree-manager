@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Zsh completion system** for enhanced user experience
+  - Tab completion for `worktree_remove` command (excludes protected "main" worktree)
+  - Tab completion for `wt` command (includes all worktrees)
+  - Dynamic worktree name suggestions from current git repository
+  - Integration with Oh-My-Zsh completion system
+- **Interactive selection menu** for `worktree_remove`
+  - Shows numbered menu when called without arguments
+  - Displays all removable worktrees (excluding "main")
+  - Supports cancellation with Ctrl+C
+  - Seamlessly integrates with existing confirmation workflow
+- `worktree_dir` - Initialize a new bare repository with worktree structure
+  - Auto-generates directory name with `-worktrees` suffix from repository URL
+  - Supports custom directory naming
+  - Works with SSH and HTTPS git URLs
+  - Creates bare repository structure (`.bare/` directory)
+  - Configures `.git` pointer file
+  - Sets up fetch/pull configuration
+  - Creates initial `main` worktree
+  - Comprehensive error handling with automatic cleanup on failure
+  - Repository-agnostic design works with any git repository
+
 ## [1.0.0] - 2025-01-07
 
 ### Added

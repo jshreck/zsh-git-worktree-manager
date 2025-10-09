@@ -4,11 +4,15 @@ An Oh-My-Zsh plugin for managing git worktrees with ease. Streamline your workfl
 
 ## 🌟 Features
 
+- **worktree_dir** - Initialize a new bare repository with worktree structure from any git URL
 - **worktree_setup** - Create a new worktree with automatic branch creation, config file copying, and dependency installation
 - **worktree_list** - List all worktrees with pretty formatting
 - **worktree_remove** - Remove a worktree with confirmation and optional branch deletion
+  - ✨ **Interactive menu** when called without arguments
+  - ⌨️ **Tab completion** for worktree names
 - **worktree_pull** - Pull latest changes with automatic stash/unstash
 - **wt** - Quick navigation between worktrees
+  - ⌨️ **Tab completion** for worktree names
 - **pr_review** - Create a worktree from a GitHub PR for easy code review
 - **wtp** - Alias for `worktree_pull`
 
@@ -50,6 +54,39 @@ Then follow the instructions to add `git-worktree-manager` to your plugins array
 
 ## 📖 Usage
 
+### worktree_dir
+
+Initialize a new repository with bare repository worktree structure:
+
+```bash
+# Auto-generate directory name (creates {repo-name}-worktrees)
+worktree_dir git@github.com:user/my-repo.git
+# Creates: ./my-repo-worktrees/
+
+# Use custom directory name
+worktree_dir git@github.com:user/my-repo.git custom-project
+# Creates: ./custom-project/
+
+# Works with HTTPS URLs too
+worktree_dir https://github.com/user/another-repo.git
+
+# Show help
+worktree_dir --help
+```
+
+**What it does:**
+1. Creates parent directory in your current location
+2. Clones repository as a bare repo into `.bare/`
+3. Configures `.git` pointer file
+4. Sets up fetch/pull configuration
+5. Creates initial `main` worktree
+
+**After creation:**
+- Navigate to the main worktree: `cd {dir-name}/main`
+- Copy your config files (*.env, certs) into the main directory
+- Run `yarn install` or `npm install`
+- Create additional worktrees with `worktree_setup`
+
 ### worktree_setup
 
 Create a new worktree with automatic configuration:
@@ -88,14 +125,25 @@ worktree_list
 Remove a worktree with confirmation:
 
 ```bash
+# Remove a specific worktree
 worktree_remove feature/my-feature
+
+# Interactive mode - select from a menu (no arguments)
+worktree_remove
+
+# Tab completion - press TAB to see available worktrees
+worktree_remove <TAB>
 ```
 
 **What it does:**
-1. Confirms worktree removal
-2. Removes the worktree
-3. Optionally deletes the associated branch
-4. Handles force deletion if branch has unmerged changes
+1. Shows interactive selection menu if no worktree name provided
+2. Confirms worktree removal
+3. Removes the worktree
+4. Optionally deletes the associated branch
+5. Handles force deletion if branch has unmerged changes
+
+**Interactive Mode:**
+When called without arguments, displays a numbered menu of all removable worktrees (excluding the protected "main" worktree). Use arrow keys or type the number to select, then press Enter. Press Ctrl+C to cancel.
 
 ### worktree_pull
 
@@ -124,6 +172,9 @@ wt
 
 # Navigate to specific worktree
 wt feature/my-feature
+
+# Tab completion - press TAB to see all available worktrees
+wt <TAB>
 ```
 
 ### pr_review

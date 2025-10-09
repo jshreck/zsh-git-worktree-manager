@@ -11,7 +11,31 @@ This is an Oh-My-Zsh plugin that provides comprehensive git worktree management 
 ### Plugin Structure
 - **git-worktree-manager.plugin.zsh** - Main plugin entry point that sources all function files and creates aliases
 - **functions/** - Directory containing individual function files (one per command)
+- **completions/** - Directory containing zsh completion definitions for autocomplete functionality
 - **install.sh** - Installation script that creates symlink to Oh-My-Zsh custom plugins directory
+
+### Completion System
+The plugin includes a zsh completion system for enhanced user experience:
+
+**Location:** `completions/_git_worktree_manager`
+
+**Features:**
+- Tab completion for `worktree_remove` - dynamically lists all removable worktrees (excludes "main")
+- Tab completion for `wt` - lists all available worktrees for navigation
+- Integration with Oh-My-Zsh's completion system via fpath
+
+**Implementation Details:**
+- Uses `#compdef` directive to register completion functions
+- `_get_worktrees()` helper function parses `git worktree list --porcelain` output
+- Filters worktree names using zsh array manipulation (e.g., `${worktrees:#main}` to exclude "main")
+- Provides contextual completion based on the command being used
+
+**Interactive Selection Menu:**
+The `worktree_remove` function includes an interactive mode when called without arguments:
+- Uses zsh's built-in `select` command to display a numbered menu
+- Filters out "main" worktree (protected from deletion)
+- Handles user cancellation gracefully (Ctrl+C)
+- Seamlessly transitions to existing confirmation workflow after selection
 
 ### Core Functions
 Each function is in its own file in the `functions/` directory:
@@ -66,6 +90,23 @@ source functions/worktree_setup
 
 # Test it
 worktree_setup --help
+```
+
+### Testing Completions
+After modifying completion files:
+```bash
+# Reload your shell configuration
+source ~/.zshrc
+
+# Or manually reload completions
+autoload -U compinit && compinit
+
+# Test tab completion
+worktree_remove <TAB>
+wt <TAB>
+
+# Test interactive menu
+worktree_remove
 ```
 
 ## Important Considerations
