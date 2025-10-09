@@ -1,12 +1,47 @@
 # Remove a worktree with confirmation
 function worktree_remove() {
-  if [[ -z "$1" ]]; then
-    echo "❌ Error: Worktree name required"
-    echo "Usage: worktree_remove <worktree-name>"
-    return 1
-  fi
-  
   local worktree_name="$1"
+  
+  # If no argument provided, show interactive selection menu
+  if [[ -z "$worktree_name" ]]; then
+    echo "🌳 Available worktrees:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Get list of worktrees (excluding main)
+    local -a worktrees
+    worktrees=($(git worktree list --porcelain | \
+      grep '^worktree ' | \
+      awk '{print $2}' | \
+      xargs -n1 basename | \
+      grep -v '^main$'))
+    
+    # Check if any removable worktrees exist
+    if [[ ${#worktrees[@]} -eq 0 ]]; then
+      echo "❌ No removable worktrees found (main worktree is protected)"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      return 1
+    fi
+    
+    # Display selection menu
+    echo "Select a worktree to remove (or press Ctrl+C to cancel):"
+    echo ""
+    PS3=$'\n🌳 Enter selection number: '
+    
+    select worktree_name in "${worktrees[@]}"; do
+      if [[ -n "$worktree_name" ]]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        break
+      else
+        echo "❌ Invalid selection. Please try again."
+      fi
+    done
+    
+    # If user cancelled (Ctrl+C), worktree_name will be empty
+    if [[ -z "$worktree_name" ]]; then
+      echo "❌ Cancelled"
+      return 1
+    fi
+  fi
   
   # Protect main worktree from deletion
   if [[ "$worktree_name" == "main" ]]; then
@@ -31,10 +66,10 @@ function worktree_remove() {
       if [[ -n "$branch_name" ]] && git show-ref --verify --quiet "refs/heads/$branch_name"; then
         echo ""
         echo "🌿 Branch '$branch_name' still exists."
-        echo "⚠️  Do you want to delete the branch '$branch_name'? (y/N)"
+        echo "⚠️  Do you want to delete the branch '$branch_name'? (Y/n)"
         read -r branch_response
         
-        if [[ "$branch_response" =~ ^[Yy]$ ]]; then
+        if [[ -z "$branch_response" || "$branch_response" =~ ^[Yy]$ ]]; then
           # Try normal deletion first
           if git branch -d "$branch_name" 2>/dev/null; then
             echo "✅ Branch '$branch_name' deleted"
