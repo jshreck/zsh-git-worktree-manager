@@ -77,9 +77,6 @@ function pr_review() {
     return 1
   fi
   
-  # Store current directory
-  local original_dir="$(pwd)"
-  
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "📂 Worktree root: $worktrees_dir"
   echo "🌿 Local branch: $local_branch_name"
@@ -87,97 +84,92 @@ function pr_review() {
   echo "📂 Location: $worktrees_dir/$local_branch_name"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  
-  # Fetch remote branch
+
+  # Fetch remote branch (subshell: CWD change is scoped)
   echo "⬇️  Fetching remote branch..."
-  cd "$worktrees_dir/main" || {
-    echo "❌ Error: Cannot access main worktree"
-    cd "$original_dir"
+  (
+    cd "$worktrees_dir/main" || exit 1
+    git fetch origin "$remote_branch_name"
+  ) || {
+    echo "❌ Error: Failed to fetch remote branch '$remote_branch_name'"
     return 1
   }
-  
-  if git fetch origin "$remote_branch_name"; then
-    echo "✅ Remote branch fetched"
-  else
-    echo "❌ Error: Failed to fetch remote branch '$remote_branch_name'"
-    cd "$original_dir"
-    return 1
-  fi
-  
-  # Create worktree
-  cd "$worktrees_dir" || return 1
+  echo "✅ Remote branch fetched"
+
+  # Create worktree (subshell: CWD change is scoped)
   echo ""
   echo "🌳 Creating worktree..."
-  
-  # Skip Husky hooks during worktree creation
-  if HUSKY_SKIP_HOOKS=1 git worktree add -b "$local_branch_name" "$local_branch_name" "origin/$remote_branch_name"; then
-    echo "✅ Worktree created"
-  else
-    echo "❌ Error: Failed to create worktree"
-    cd "$original_dir"
-    return 1
+  # If a stale local branch exists from a previous review session, remove it so
+  # git worktree add -b can create a fresh one tracking the latest remote state.
+  if (cd "$worktrees_dir/main" && git show-ref --verify --quiet "refs/heads/$local_branch_name"); then
+    echo "🔄 Removing stale local branch '$local_branch_name'..."
+    (cd "$worktrees_dir/main" && git branch -D "$local_branch_name") || {
+      echo "❌ Error: Failed to remove stale branch '$local_branch_name'"
+      return 1
+    }
   fi
-  
-  # Set upstream tracking
+  # Skip Husky hooks during worktree creation
+  (cd "$worktrees_dir" && HUSKY_SKIP_HOOKS=1 git worktree add -b "$local_branch_name" "$local_branch_name" "origin/$remote_branch_name") || {
+    echo "❌ Error: Failed to create worktree"
+    return 1
+  }
+  echo "✅ Worktree created"
+
+  # Set upstream tracking (subshell: CWD change is scoped)
   echo ""
   echo "🔗 Setting upstream tracking..."
-  cd "$worktrees_dir/$local_branch_name" || return 1
-  
-  if git branch --set-upstream-to=origin/$remote_branch_name; then
+  if (cd "$worktrees_dir/$local_branch_name" && git branch --set-upstream-to=origin/$remote_branch_name); then
     echo "✅ Upstream set to origin/$remote_branch_name"
   else
     echo "⚠️  Warning: Failed to set upstream tracking"
   fi
-  
-  # Copy config files
+
+  # Copy config files (subshell: CWD changes are scoped)
   echo ""
   echo "📄 Copying configuration files..."
-  cd "$worktrees_dir/main" || return 1
-  
-  local file_count=0
   local temp_tar="/tmp/pr_review_$$.tar"
-  
-  # Count files first
-  file_count=$(find . -type d -name node_modules -prune -o \
-    \( -name '*.env' -o -name 'key.pem' -o -name 'cert.pem' \) \
-    -type f -print | wc -l | tr -d ' ')
-  
-  if [[ "$file_count" -gt 0 ]]; then
-    echo "   Found $file_count configuration file(s)"
-    
+  local file_count=0
+
+  file_count=$(
+    cd "$worktrees_dir/main" && \
     find . -type d -name node_modules -prune -o \
       \( -name '*.env' -o -name 'key.pem' -o -name 'cert.pem' \) \
-      -type f -print0 | tar -czf "$temp_tar" --null -T - 2>/dev/null
-    
-    cd "$worktrees_dir/$local_branch_name" || return 1
-    
-    if tar -xzf "$temp_tar" 2>/dev/null; then
+      -type f -print | wc -l | tr -d ' '
+  )
+
+  if [[ "$file_count" -gt 0 ]]; then
+    echo "   Found $file_count configuration file(s)"
+    (
+      cd "$worktrees_dir/main" && \
+      find . -type d -name node_modules -prune -o \
+        \( -name '*.env' -o -name 'key.pem' -o -name 'cert.pem' \) \
+        -type f -print0 | tar -czf "$temp_tar" --null -T - 2>/dev/null
+    )
+    if (cd "$worktrees_dir/$local_branch_name" && tar -xzf "$temp_tar" 2>/dev/null); then
       echo "✅ Configuration files copied"
     else
       echo "⚠️  Warning: Some files may not have been copied"
     fi
-    
     rm -f "$temp_tar"
   else
     echo "⚠️  No configuration files found"
   fi
-  
-  # Install dependencies
+
+  # Install dependencies (subshell: CWD change is scoped)
+  # HUSKY_SKIP_INSTALL=true prevents Husky from overwriting shared .bare/hooks/
+  # on every worktree creation, which would break hooks when the worktree is removed.
   echo ""
   echo "📦 Installing dependencies..."
-  cd "$worktrees_dir/$local_branch_name" || return 1
-  
-  if yarn install; then
+  if (cd "$worktrees_dir/$local_branch_name" && HUSKY_SKIP_INSTALL=true yarn install); then
     echo "✅ Dependencies installed"
   else
     echo "❌ Warning: yarn install failed"
     echo "   You may need to run 'yarn install' manually"
   fi
-  
-  # Navigate to new worktree
+
+  # Navigate to new worktree (intentional persistent cd)
   cd "$worktrees_dir/$local_branch_name" || return 1
-  
-  # Final message
+
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "🎉 PR Review worktree ready!"
@@ -191,6 +183,6 @@ function pr_review() {
   echo "  • Review the PR code! 🔍"
   echo "  • Run tests if needed"
   echo "  • Pull updates: git pull"
-  echo "  • When done: cd .. && worktree_remove $local_branch_name"
+  echo "  • When done: worktree_remove $local_branch_name"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }

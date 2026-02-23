@@ -48,13 +48,26 @@ function worktree_remove() {
     echo "❌ Error: Cannot remove 'main' worktree - it is protected"
     return 1
   fi
-  
+
+  local worktrees_dir=$(_get_worktree_root)
+
+  # If CWD is inside the worktree being removed, navigate to main first.
+  # git worktree remove deletes the directory, leaving the shell with a
+  # non-existent CWD which breaks every subsequent git command.
+  if [[ "$(pwd)" == "$worktrees_dir/$worktree_name"* ]]; then
+    echo "📂 Navigating to main worktree before removal..."
+    cd "$worktrees_dir/main" || {
+      echo "❌ Error: Cannot navigate away from worktree being removed"
+      return 1
+    }
+  fi
+
   # Get the branch name associated with this worktree before removing it
   # Using grep + awk is faster than complex awk pattern matching
   local branch_name=$(git worktree list --porcelain | \
     grep -A 2 "worktree.*/${worktree_name}$" | \
     awk '/^branch/ { sub(/^refs\/heads\//, "", $2); print $2; exit }')
-  
+
   echo "⚠️  Are you sure you want to remove worktree '$worktree_name'? (y/N)"
   read -r response
   
