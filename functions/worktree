@@ -8,7 +8,7 @@ function worktree() {
     list)   _wt_list "$@" ;;
     pull)   _wt_pull "$@" ;;
     dir)    _wt_dir "$@" ;;
-    pr)     _wt_pr "$@" ;;
+    review) _wt_pr "$@" ;;
     *)
       echo "Usage: worktree <subcommand> [args]"
       echo ""
@@ -18,7 +18,7 @@ function worktree() {
       echo "  list    List all worktrees"
       echo "  pull    Pull latest changes with stash/unstash"
       echo "  dir     Initialize bare repo directory structure"
-      echo "  pr      Create a worktree from a GitHub PR"
+      echo "  review  Review a GitHub PR in a new worktree"
       return 1
       ;;
   esac

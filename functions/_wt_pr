@@ -3,10 +3,10 @@ function _wt_pr() {
   # Validate input
   if [[ -z "$1" ]]; then
     echo "❌ Error: GitHub PR URL required"
-    echo "Usage: worktree pr <github-pr-url>"
+    echo "Usage: worktree review <github-pr-url>"
     echo ""
     echo "Example:"
-    echo "  worktree pr https://github.com/owner/repo/pull/123"
+    echo "  worktree review https://github.com/owner/repo/pull/123"
     return 1
   fi
 

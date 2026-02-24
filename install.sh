@@ -27,7 +27,7 @@ if command -v gh &>/dev/null; then
   echo "✅ GitHub CLI found ($(gh --version | head -1))"
 else
   echo "⚠️  Warning: GitHub CLI (gh) not found"
-  echo "   The 'worktree pr' command requires gh CLI"
+  echo "   The 'worktree review' command requires gh CLI"
   echo "   Install it with: brew install gh"
 fi
 

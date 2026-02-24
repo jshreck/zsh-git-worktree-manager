@@ -13,14 +13,14 @@ An Oh-My-Zsh plugin for managing git worktrees with ease. Streamline your workfl
 - **worktree pull** - Pull latest changes with automatic stash/unstash
 - **wt** - Quick navigation between worktrees
   - ⌨️ **Tab completion** for worktree names
-- **worktree pr** - Create a worktree from a GitHub PR for easy code review
+- **worktree review** - Create a worktree from a GitHub PR for easy code review
 - **wtp** - Alias for `worktree pull`
 
 ## 📋 Prerequisites
 
 - [Oh-My-Zsh](https://ohmyz.sh/) installed
 - Git 2.15+ (for worktree support)
-- [GitHub CLI (gh)](https://cli.github.com/) (required for `worktree pr` command)
+- [GitHub CLI (gh)](https://cli.github.com/) (required for `worktree review` command)
 - Yarn (for dependency installation)
 
 ## 🚀 Installation
@@ -177,12 +177,12 @@ wt feature/my-feature
 wt <TAB>
 ```
 
-### worktree pr
+### worktree review
 
 Create a worktree from a GitHub PR for code review:
 
 ```bash
-worktree pr https://github.com/owner/repo/pull/123
+worktree review https://github.com/owner/repo/pull/123
 ```
 
 **What it does:**
@@ -211,7 +211,7 @@ This warning appears when the plugin cannot find your worktree structure. Make s
 
 ### "GitHub CLI (gh) is not installed"
 
-For the `worktree pr` command, you need the GitHub CLI:
+For the `worktree review` command, you need the GitHub CLI:
 
 ```bash
 brew install gh

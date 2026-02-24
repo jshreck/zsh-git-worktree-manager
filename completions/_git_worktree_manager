@@ -35,7 +35,7 @@ _worktree() {
         'list:List all worktrees'
         'pull:Pull latest changes with stash/unstash'
         'dir:Initialize bare repo directory structure'
-        'pr:Create a worktree from a GitHub PR'
+        'review:Review a GitHub PR in a new worktree'
       )
       _describe 'subcommand' subcommands
       ;;

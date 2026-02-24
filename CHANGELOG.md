@@ -14,9 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `worktree list` (was `worktree_list`)
   - `worktree pull` (was `worktree_pull`)
   - `worktree dir` (was `worktree_dir`)
-  - `worktree pr` (was `pr_review`)
+  - `worktree review` (was `pr_review`)
   - `wtp` alias now runs `worktree pull`
   - Old standalone names removed entirely (clean break, no aliases)
+- Renamed `worktree pr` subcommand to `worktree review` for clarity
 - **Updated tab completion** to support `worktree <TAB>` (lists all subcommands) and `worktree remove <TAB>` (lists worktree names)
 
 ### Added

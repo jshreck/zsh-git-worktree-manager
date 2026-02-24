@@ -135,7 +135,7 @@ Uses `find` with `-prune` to exclude node_modules, then `tar` for atomic copying
 ### Dependencies
 - Git 2.15+ (for worktree support)
 - Yarn (for dependency installation)
-- GitHub CLI (`gh`) - required only for `worktree pr` command
+- GitHub CLI (`gh`) - required only for `worktree review` command
 - Oh-My-Zsh framework
 
 ### Commit Format
