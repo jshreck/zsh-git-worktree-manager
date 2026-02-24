@@ -1,12 +1,12 @@
 # Remove a worktree with confirmation
-function worktree_remove() {
+function _wt_remove() {
   local worktree_name="$1"
-  
+
   # If no argument provided, show interactive selection menu
   if [[ -z "$worktree_name" ]]; then
     echo "🌳 Available worktrees:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
+
     # Get list of worktrees (excluding main)
     local -a worktrees
     worktrees=($(git worktree list --porcelain | \
@@ -14,19 +14,19 @@ function worktree_remove() {
       awk '{print $2}' | \
       xargs -n1 basename | \
       grep -v '^main$'))
-    
+
     # Check if any removable worktrees exist
     if [[ ${#worktrees[@]} -eq 0 ]]; then
       echo "❌ No removable worktrees found (main worktree is protected)"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       return 1
     fi
-    
+
     # Display selection menu
     echo "Select a worktree to remove (or press Ctrl+C to cancel):"
     echo ""
     PS3=$'\n🌳 Enter selection number: '
-    
+
     select worktree_name in "${worktrees[@]}"; do
       if [[ -n "$worktree_name" ]]; then
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -35,14 +35,14 @@ function worktree_remove() {
         echo "❌ Invalid selection. Please try again."
       fi
     done
-    
+
     # If user cancelled (Ctrl+C), worktree_name will be empty
     if [[ -z "$worktree_name" ]]; then
       echo "❌ Cancelled"
       return 1
     fi
   fi
-  
+
   # Protect main worktree from deletion
   if [[ "$worktree_name" == "main" ]]; then
     echo "❌ Error: Cannot remove 'main' worktree - it is protected"
@@ -70,18 +70,18 @@ function worktree_remove() {
 
   echo "⚠️  Are you sure you want to remove worktree '$worktree_name'? (y/N)"
   read -r response
-  
+
   if [[ "$response" =~ ^[Yy]$ ]]; then
     if git worktree remove "$worktree_name"; then
       echo "✅ Worktree '$worktree_name' removed"
-      
+
       # Check if the branch still exists and offer to delete it
       if [[ -n "$branch_name" ]] && git show-ref --verify --quiet "refs/heads/$branch_name"; then
         echo ""
         echo "🌿 Branch '$branch_name' still exists."
         echo "⚠️  Do you want to delete the branch '$branch_name'? (Y/n)"
         read -r branch_response
-        
+
         if [[ -z "$branch_response" || "$branch_response" =~ ^[Yy]$ ]]; then
           # Try normal deletion first
           if git branch -d "$branch_name" 2>/dev/null; then
@@ -91,7 +91,7 @@ function worktree_remove() {
             echo "⚠️  Branch '$branch_name' has unmerged changes."
             echo "   Force delete? This will permanently lose any unmerged commits. (y/N)"
             read -r force_response
-            
+
             if [[ "$force_response" =~ ^[Yy]$ ]]; then
               if git branch -D "$branch_name"; then
                 echo "✅ Branch '$branch_name' force deleted"

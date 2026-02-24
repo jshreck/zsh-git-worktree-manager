@@ -1,5 +1,5 @@
 # List all worktrees with pretty formatting
-function worktree_list() {
+function _wt_list() {
   echo "🌳 Git Worktrees:"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   git worktree list

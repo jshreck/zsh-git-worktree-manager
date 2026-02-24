@@ -1,29 +1,29 @@
 # Review a PR by creating a worktree from the PR branch
-function pr_review() {
+function _wt_pr() {
   # Validate input
   if [[ -z "$1" ]]; then
     echo "❌ Error: GitHub PR URL required"
-    echo "Usage: pr_review <github-pr-url>"
+    echo "Usage: worktree pr <github-pr-url>"
     echo ""
     echo "Example:"
-    echo "  pr_review https://github.com/owner/repo/pull/123"
+    echo "  worktree pr https://github.com/owner/repo/pull/123"
     return 1
   fi
-  
+
   local pr_url="$1"
-  
+
   # Check if gh CLI is installed
   if ! command -v gh &>/dev/null; then
     echo "❌ Error: GitHub CLI (gh) is not installed"
     echo "   Install it with: brew install gh"
     return 1
   fi
-  
+
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "📋 PR Review Setup"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  
+
   # Extract PR information using gh CLI
   echo "🔍 Fetching PR information..."
   local pr_data
@@ -37,46 +37,46 @@ function pr_review() {
     echo "  • You have access to the repository"
     return 1
   fi
-  
+
   # Parse PR data
   local remote_branch_name=$(echo "$pr_data" | grep -o '"headRefName":"[^"]*"' | cut -d'"' -f4)
   local pr_number=$(echo "$pr_data" | grep -o '"number":[0-9]*' | cut -d':' -f2)
   local pr_title=$(echo "$pr_data" | grep -o '"title":"[^"]*"' | sed 's/"title":"//' | sed 's/"$//')
-  
+
   if [[ -z "$remote_branch_name" ]]; then
     echo "❌ Error: Could not extract branch name from PR"
     return 1
   fi
-  
+
   echo "✅ PR information retrieved"
   echo ""
   echo "   PR #$pr_number: $pr_title"
   echo "   Branch: $remote_branch_name"
   echo ""
-  
+
   # Setup variables
   local local_branch_name="pr-$remote_branch_name"
   local worktrees_dir=$(_get_worktree_root)
-  
+
   if [[ $? -ne 0 ]]; then
     echo "⚠️  Warning: Could not auto-detect worktree root"
     echo "Using current directory: $worktrees_dir"
   fi
-  
+
   # Check if main worktree exists
   if [[ ! -d "$worktrees_dir/main" ]]; then
     echo "❌ Error: 'main' worktree not found in $worktrees_dir"
     echo "Please run this command from within a worktree directory structure"
     return 1
   fi
-  
+
   # Check if worktree already exists
   if [[ -d "$worktrees_dir/$local_branch_name" ]]; then
     echo "❌ Error: Worktree '$local_branch_name' already exists at $worktrees_dir/$local_branch_name"
-    echo "   Remove it first with: worktree_remove $local_branch_name"
+    echo "   Remove it first with: worktree remove $local_branch_name"
     return 1
   fi
-  
+
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "📂 Worktree root: $worktrees_dir"
   echo "🌿 Local branch: $local_branch_name"
@@ -183,6 +183,6 @@ function pr_review() {
   echo "  • Review the PR code! 🔍"
   echo "  • Run tests if needed"
   echo "  • Pull updates: git pull"
-  echo "  • When done: worktree_remove $local_branch_name"
+  echo "  • When done: worktree remove $local_branch_name"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }

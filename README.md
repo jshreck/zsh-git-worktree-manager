@@ -4,23 +4,23 @@ An Oh-My-Zsh plugin for managing git worktrees with ease. Streamline your workfl
 
 ## 🌟 Features
 
-- **worktree_dir** - Initialize a new bare repository with worktree structure from any git URL
-- **worktree_setup** - Create a new worktree with automatic branch creation, config file copying, and dependency installation
-- **worktree_list** - List all worktrees with pretty formatting
-- **worktree_remove** - Remove a worktree with confirmation and optional branch deletion
+- **worktree dir** - Initialize a new bare repository with worktree structure from any git URL
+- **worktree setup** - Create a new worktree with automatic branch creation, config file copying, and dependency installation
+- **worktree list** - List all worktrees with pretty formatting
+- **worktree remove** - Remove a worktree with confirmation and optional branch deletion
   - ✨ **Interactive menu** when called without arguments
   - ⌨️ **Tab completion** for worktree names
-- **worktree_pull** - Pull latest changes with automatic stash/unstash
+- **worktree pull** - Pull latest changes with automatic stash/unstash
 - **wt** - Quick navigation between worktrees
   - ⌨️ **Tab completion** for worktree names
-- **pr_review** - Create a worktree from a GitHub PR for easy code review
-- **wtp** - Alias for `worktree_pull`
+- **worktree pr** - Create a worktree from a GitHub PR for easy code review
+- **wtp** - Alias for `worktree pull`
 
 ## 📋 Prerequisites
 
 - [Oh-My-Zsh](https://ohmyz.sh/) installed
 - Git 2.15+ (for worktree support)
-- [GitHub CLI (gh)](https://cli.github.com/) (required for `pr_review` function)
+- [GitHub CLI (gh)](https://cli.github.com/) (required for `worktree pr` command)
 - Yarn (for dependency installation)
 
 ## 🚀 Installation
@@ -54,24 +54,24 @@ Then follow the instructions to add `git-worktree-manager` to your plugins array
 
 ## 📖 Usage
 
-### worktree_dir
+### worktree dir
 
 Initialize a new repository with bare repository worktree structure:
 
 ```bash
 # Auto-generate directory name (creates {repo-name}-worktrees)
-worktree_dir git@github.com:user/my-repo.git
+worktree dir git@github.com:user/my-repo.git
 # Creates: ./my-repo-worktrees/
 
 # Use custom directory name
-worktree_dir git@github.com:user/my-repo.git custom-project
+worktree dir git@github.com:user/my-repo.git custom-project
 # Creates: ./custom-project/
 
 # Works with HTTPS URLs too
-worktree_dir https://github.com/user/another-repo.git
+worktree dir https://github.com/user/another-repo.git
 
 # Show help
-worktree_dir --help
+worktree dir --help
 ```
 
 **What it does:**
@@ -85,24 +85,24 @@ worktree_dir --help
 - Navigate to the main worktree: `cd {dir-name}/main`
 - Copy your config files (*.env, certs) into the main directory
 - Run `yarn install` or `npm install`
-- Create additional worktrees with `worktree_setup`
+- Create additional worktrees with `worktree setup`
 
-### worktree_setup
+### worktree setup
 
 Create a new worktree with automatic configuration:
 
 ```bash
 # Basic usage - creates a new worktree from main branch
-worktree_setup feature/my-feature
+worktree setup feature/my-feature
 
 # Skip yarn install
-worktree_setup --skip-yarn bugfix/critical-fix
+worktree setup --skip-yarn bugfix/critical-fix
 
 # Create from a different base branch
-worktree_setup --base=develop feature/new-thing
+worktree setup --base=develop feature/new-thing
 
 # Show help
-worktree_setup --help
+worktree setup --help
 ```
 
 **What it does:**
@@ -112,27 +112,27 @@ worktree_setup --help
 4. Installs dependencies with yarn
 5. Navigates you to the new worktree
 
-### worktree_list
+### worktree list
 
 Display all worktrees in a formatted list:
 
 ```bash
-worktree_list
+worktree list
 ```
 
-### worktree_remove
+### worktree remove
 
 Remove a worktree with confirmation:
 
 ```bash
 # Remove a specific worktree
-worktree_remove feature/my-feature
+worktree remove feature/my-feature
 
 # Interactive mode - select from a menu (no arguments)
-worktree_remove
+worktree remove
 
 # Tab completion - press TAB to see available worktrees
-worktree_remove <TAB>
+worktree remove <TAB>
 ```
 
 **What it does:**
@@ -145,12 +145,12 @@ worktree_remove <TAB>
 **Interactive Mode:**
 When called without arguments, displays a numbered menu of all removable worktrees (excluding the protected "main" worktree). Use arrow keys or type the number to select, then press Enter. Press Ctrl+C to cancel.
 
-### worktree_pull
+### worktree pull
 
 Pull latest changes in the current worktree:
 
 ```bash
-worktree_pull
+worktree pull
 
 # Or use the alias
 wtp
@@ -177,12 +177,12 @@ wt feature/my-feature
 wt <TAB>
 ```
 
-### pr_review
+### worktree pr
 
 Create a worktree from a GitHub PR for code review:
 
 ```bash
-pr_review https://github.com/owner/repo/pull/123
+worktree pr https://github.com/owner/repo/pull/123
 ```
 
 **What it does:**
@@ -211,7 +211,7 @@ This warning appears when the plugin cannot find your worktree structure. Make s
 
 ### "GitHub CLI (gh) is not installed"
 
-For the `pr_review` function, you need the GitHub CLI:
+For the `worktree pr` command, you need the GitHub CLI:
 
 ```bash
 brew install gh
@@ -229,7 +229,7 @@ Make sure you:
 You can skip yarn installation with:
 
 ```bash
-worktree_setup --skip-yarn my-branch
+worktree setup --skip-yarn my-branch
 ```
 
 Then manually run `yarn install` when ready.

@@ -27,7 +27,7 @@ if command -v gh &>/dev/null; then
   echo "✅ GitHub CLI found ($(gh --version | head -1))"
 else
   echo "⚠️  Warning: GitHub CLI (gh) not found"
-  echo "   The pr_review function requires gh CLI"
+  echo "   The 'worktree pr' command requires gh CLI"
   echo "   Install it with: brew install gh"
 fi
 
@@ -83,7 +83,7 @@ echo "2. Reload your shell:"
 echo "   source ~/.zshrc"
 echo ""
 echo "3. Test the installation:"
-echo "   worktree_setup --help"
+echo "   worktree setup --help"
 echo ""
 echo "For more information, see: $PLUGIN_SOURCE_DIR/README.md"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

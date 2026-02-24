@@ -1,0 +1,25 @@
+function worktree() {
+  local cmd="$1"
+  (( $# > 0 )) && shift
+
+  case "$cmd" in
+    setup)  _wt_setup "$@" ;;
+    remove) _wt_remove "$@" ;;
+    list)   _wt_list "$@" ;;
+    pull)   _wt_pull "$@" ;;
+    dir)    _wt_dir "$@" ;;
+    pr)     _wt_pr "$@" ;;
+    *)
+      echo "Usage: worktree <subcommand> [args]"
+      echo ""
+      echo "Subcommands:"
+      echo "  setup   Create a new worktree"
+      echo "  remove  Remove a worktree"
+      echo "  list    List all worktrees"
+      echo "  pull    Pull latest changes with stash/unstash"
+      echo "  dir     Initialize bare repo directory structure"
+      echo "  pr      Create a worktree from a GitHub PR"
+      return 1
+      ;;
+  esac
+}

@@ -1,4 +1,4 @@
-#compdef worktree_remove wt
+#compdef worktree wt
 
 # Zsh completion for git-worktree-manager plugin
 # Provides autocomplete for worktree names
@@ -6,7 +6,7 @@
 # Helper function to get list of worktree names
 _get_worktrees() {
   local worktrees=()
-  
+
   # Get worktree list and extract directory basenames
   if git worktree list --porcelain &>/dev/null; then
     worktrees=($(git worktree list --porcelain | \
@@ -14,38 +14,59 @@ _get_worktrees() {
       awk '{print $2}' | \
       xargs -n1 basename))
   fi
-  
+
   echo "${worktrees[@]}"
 }
 
-# Completion for worktree_remove - excludes "main" (protected)
-_worktree_remove() {
-  local worktrees
-  worktrees=($(_get_worktrees))
-  
-  # Filter out "main" from the list
-  worktrees=(${worktrees:#main})
-  
-  if [[ ${#worktrees[@]} -eq 0 ]]; then
-    _message 'no removable worktrees found'
-    return 1
-  fi
-  
+# Completion for the worktree command
+_worktree() {
+  local state
+
   _arguments \
-    '1:worktree name:compadd -a worktrees' \
-    '--help[Show help message]'
+    '1:subcommand:->subcommand' \
+    '*::args:->args'
+
+  case "$state" in
+    subcommand)
+      local subcommands
+      subcommands=(
+        'setup:Create a new worktree'
+        'remove:Remove a worktree'
+        'list:List all worktrees'
+        'pull:Pull latest changes with stash/unstash'
+        'dir:Initialize bare repo directory structure'
+        'pr:Create a worktree from a GitHub PR'
+      )
+      _describe 'subcommand' subcommands
+      ;;
+    args)
+      case "$line[1]" in
+        remove)
+          local worktrees
+          worktrees=($(_get_worktrees))
+          # Filter out "main" from the list
+          worktrees=(${worktrees:#main})
+          if [[ ${#worktrees[@]} -eq 0 ]]; then
+            _message 'no removable worktrees found'
+            return 1
+          fi
+          _arguments '1:worktree name:compadd -a worktrees'
+          ;;
+      esac
+      ;;
+  esac
 }
 
 # Completion for wt - includes all worktrees
 _wt() {
   local worktrees
   worktrees=($(_get_worktrees))
-  
+
   if [[ ${#worktrees[@]} -eq 0 ]]; then
     _message 'no worktrees found'
     return 1
   fi
-  
+
   _arguments \
     '1:worktree name:compadd -a worktrees'
 }
@@ -53,8 +74,8 @@ _wt() {
 # Main completion dispatcher
 _git_worktree_manager() {
   case "$service" in
-    worktree_remove)
-      _worktree_remove "$@"
+    worktree)
+      _worktree "$@"
       ;;
     wt)
       _wt "$@"

@@ -12,5 +12,5 @@ for func_file in "${PLUGIN_DIR}"/functions/*; do
     source "${func_file}"
 done
 
-# Create alias for worktree_pull
-alias wtp='worktree_pull'
+# Create alias for worktree pull
+alias wtp='worktree pull'

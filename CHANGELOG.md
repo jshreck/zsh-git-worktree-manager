@@ -7,18 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Migrated to `worktree <subcommand>` UX** - all standalone commands are now subcommands of `worktree`
+  - `worktree setup` (was `worktree_setup`)
+  - `worktree remove` (was `worktree_remove`)
+  - `worktree list` (was `worktree_list`)
+  - `worktree pull` (was `worktree_pull`)
+  - `worktree dir` (was `worktree_dir`)
+  - `worktree pr` (was `pr_review`)
+  - `wtp` alias now runs `worktree pull`
+  - Old standalone names removed entirely (clean break, no aliases)
+- **Updated tab completion** to support `worktree <TAB>` (lists all subcommands) and `worktree remove <TAB>` (lists worktree names)
+
 ### Added
 - **Zsh completion system** for enhanced user experience
-  - Tab completion for `worktree_remove` command (excludes protected "main" worktree)
+  - Tab completion for `worktree remove` command (excludes protected "main" worktree)
   - Tab completion for `wt` command (includes all worktrees)
   - Dynamic worktree name suggestions from current git repository
   - Integration with Oh-My-Zsh completion system
-- **Interactive selection menu** for `worktree_remove`
+- **Interactive selection menu** for `worktree remove`
   - Shows numbered menu when called without arguments
   - Displays all removable worktrees (excluding "main")
   - Supports cancellation with Ctrl+C
   - Seamlessly integrates with existing confirmation workflow
-- `worktree_dir` - Initialize a new bare repository with worktree structure
+- `worktree dir` - Initialize a new bare repository with worktree structure
   - Auto-generates directory name with `-worktrees` suffix from repository URL
   - Supports custom directory naming
   - Works with SSH and HTTPS git URLs

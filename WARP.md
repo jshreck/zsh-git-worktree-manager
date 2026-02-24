@@ -4,7 +4,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-This is an Oh-My-Zsh plugin that provides comprehensive git worktree management functions. The plugin is written in Zsh and provides commands for creating, removing, listing, and navigating between git worktrees, plus a special function for reviewing GitHub PRs in isolated worktrees.
+This is an Oh-My-Zsh plugin that provides comprehensive git worktree management functions. The plugin is written in Zsh and provides commands for creating, removing, listing, and navigating between git worktrees, plus a special command for reviewing GitHub PRs in isolated worktrees.
 
 ## Architecture
 
@@ -20,7 +20,8 @@ The plugin includes a zsh completion system for enhanced user experience:
 **Location:** `completions/_git_worktree_manager`
 
 **Features:**
-- Tab completion for `worktree_remove` - dynamically lists all removable worktrees (excludes "main")
+- Tab completion for `worktree` - lists all six subcommands with descriptions
+- Tab completion for `worktree remove` - dynamically lists all removable worktrees (excludes "main")
 - Tab completion for `wt` - lists all available worktrees for navigation
 - Integration with Oh-My-Zsh's completion system via fpath
 
@@ -31,22 +32,24 @@ The plugin includes a zsh completion system for enhanced user experience:
 - Provides contextual completion based on the command being used
 
 **Interactive Selection Menu:**
-The `worktree_remove` function includes an interactive mode when called without arguments:
+The `worktree remove` subcommand includes an interactive mode when called without arguments:
 - Uses zsh's built-in `select` command to display a numbered menu
 - Filters out "main" worktree (protected from deletion)
 - Handles user cancellation gracefully (Ctrl+C)
 - Seamlessly transitions to existing confirmation workflow after selection
 
 ### Core Functions
-Each function is in its own file in the `functions/` directory:
+The plugin exposes a single `worktree` entry-point with subcommands. Each internal implementation is in its own file in the `functions/` directory:
 
 1. **_get_worktree_root** - Helper that auto-detects the worktree root directory by examining git metadata
-2. **worktree_setup** - Creates new worktrees with automatic branch creation, config copying, and yarn install
-3. **worktree_remove** - Removes worktrees with confirmation prompts and optional branch deletion
-4. **worktree_list** - Pretty-prints all worktrees
-5. **worktree_pull** - Pulls changes with automatic stash/unstash handling
-6. **wt** - Quick navigation utility (no args = root, or specify worktree name)
-7. **pr_review** - Creates worktrees from GitHub PRs using gh CLI
+2. **worktree** - Dispatcher that routes subcommands to internal `_wt_*` functions
+3. **_wt_setup** - Creates new worktrees with automatic branch creation, config copying, and yarn install
+4. **_wt_remove** - Removes worktrees with confirmation prompts and optional branch deletion
+5. **_wt_list** - Pretty-prints all worktrees
+6. **_wt_pull** - Pulls changes with automatic stash/unstash handling
+7. **_wt_dir** - Initializes bare repo directory structure
+8. **wt** - Quick navigation utility (no args = root, or specify worktree name)
+9. **_wt_pr** - Creates worktrees from GitHub PRs using gh CLI
 
 ### Key Design Patterns
 - All functions use `_get_worktree_root` to dynamically detect the worktree parent directory
@@ -62,9 +65,9 @@ Each function is in its own file in the `functions/` directory:
 # Source the plugin manually for testing
 source git-worktree-manager.plugin.zsh
 
-# Test individual functions
-worktree_setup --help
-worktree_list
+# Test individual subcommands
+worktree setup --help
+worktree list
 ```
 
 ### Installing/Updating the Plugin
@@ -86,10 +89,10 @@ To test a single function in isolation:
 source functions/_get_worktree_root
 
 # Then source the function you want to test
-source functions/worktree_setup
+source functions/_wt_setup
 
 # Test it
-worktree_setup --help
+worktree setup --help
 ```
 
 ### Testing Completions
@@ -102,11 +105,11 @@ source ~/.zshrc
 autoload -U compinit && compinit
 
 # Test tab completion
-worktree_remove <TAB>
+worktree remove <TAB>
 wt <TAB>
 
 # Test interactive menu
-worktree_remove
+worktree remove
 ```
 
 ## Important Considerations
@@ -124,7 +127,7 @@ parent-directory/
 ### Configuration File Handling
 The plugin automatically copies these files from the main worktree to new worktrees:
 - `*.env` files (excluding node_modules)
-- `key.pem` 
+- `key.pem`
 - `cert.pem`
 
 Uses `find` with `-prune` to exclude node_modules, then `tar` for atomic copying with directory structure preservation.
@@ -132,7 +135,7 @@ Uses `find` with `-prune` to exclude node_modules, then `tar` for atomic copying
 ### Dependencies
 - Git 2.15+ (for worktree support)
 - Yarn (for dependency installation)
-- GitHub CLI (`gh`) - required only for `pr_review` function
+- GitHub CLI (`gh`) - required only for `worktree pr` command
 - Oh-My-Zsh framework
 
 ### Commit Format
@@ -145,19 +148,20 @@ feat(worktree): add support for custom config files PLTW-123
 ```
 
 ### Protected Operations
-- The "main" worktree cannot be removed (hardcoded protection in worktree_remove)
+- The "main" worktree cannot be removed (hardcoded protection in `worktree remove`)
 - Branch deletion requires confirmation and offers force-delete for unmerged changes
 - Worktree removal always prompts for confirmation
 
 ## Common Workflows
 
 ### Adding a New Function
-1. Create new file in `functions/` directory with the function name
-2. Define the function using `function name() { ... }` syntax
-3. Add emoji-based output for consistency (🌳, ✅, ❌, ⚠️, 📂, 🌿, etc.)
-4. Test by sourcing the plugin file
-5. Update README.md with usage documentation
-6. Update CHANGELOG.md following Keep a Changelog format
+1. Create new file in `functions/` directory named `_wt_<name>`
+2. Define the function using `function _wt_<name>() { ... }` syntax
+3. Add a case entry in `functions/worktree` dispatcher
+4. Add emoji-based output for consistency (🌳, ✅, ❌, ⚠️, 📂, 🌿, etc.)
+5. Test by sourcing the plugin file
+6. Update README.md with usage documentation
+7. Update CHANGELOG.md following Keep a Changelog format
 
 ### Modifying Existing Functions
 All functions follow similar patterns for error handling and user feedback. Maintain consistency:

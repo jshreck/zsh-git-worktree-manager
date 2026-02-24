@@ -1,8 +1,8 @@
-function worktree_dir() {
+function _wt_dir() {
   # Parse arguments
   local git_url=""
   local dir_name=""
-  
+
   # Check for help flag
   if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -12,7 +12,7 @@ function worktree_dir() {
     echo "Create a new worktree-based project using a bare repository structure."
     echo ""
     echo "Usage:"
-    echo "  worktree_dir <git-clone-url> [custom-directory-name]"
+    echo "  worktree dir <git-clone-url> [custom-directory-name]"
     echo ""
     echo "Arguments:"
     echo "  git-clone-url              Git repository URL (SSH or HTTPS)"
@@ -21,11 +21,11 @@ function worktree_dir() {
     echo ""
     echo "Examples:"
     echo "  # Auto-generate directory name"
-    echo "  worktree_dir git@github.com:user/my-repo.git"
+    echo "  worktree dir git@github.com:user/my-repo.git"
     echo "  # Creates: ./my-repo-worktrees/"
     echo ""
     echo "  # Use custom directory name"
-    echo "  worktree_dir git@github.com:user/my-repo.git custom-project"
+    echo "  worktree dir git@github.com:user/my-repo.git custom-project"
     echo "  # Creates: ./custom-project/"
     echo ""
     echo "What this does:"
@@ -35,21 +35,21 @@ function worktree_dir() {
     echo "  4. Sets up fetch/pull configuration"
     echo "  5. Creates 'main' worktree"
     echo ""
-    echo "After creation, run 'worktree_setup' to copy config files and install dependencies."
+    echo "After creation, run 'worktree setup' to copy config files and install dependencies."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     return 0
   fi
-  
+
   # Validate arguments
   if [[ -z "$1" ]]; then
     echo "❌ Error: Git repository URL required"
-    echo "Usage: worktree_dir <git-clone-url> [custom-directory-name]"
-    echo "Run 'worktree_dir --help' for more information"
+    echo "Usage: worktree dir <git-clone-url> [custom-directory-name]"
+    echo "Run 'worktree dir --help' for more information"
     return 1
   fi
-  
+
   git_url="$1"
-  
+
   # Extract repository name from URL if custom name not provided
   if [[ -n "$2" ]]; then
     dir_name="$2"
@@ -59,32 +59,32 @@ function worktree_dir() {
     # https://github.com/user/repo.git -> repo
     # https://github.com/user/repo -> repo
     local repo_name=""
-    
+
     # Remove .git suffix if present
     local url_without_git="${git_url%.git}"
-    
+
     # Extract the last component after / or :
     repo_name=$(echo "$url_without_git" | sed -E 's#.*/##; s#.*:##')
-    
+
     if [[ -z "$repo_name" ]]; then
       echo "❌ Error: Could not extract repository name from URL"
       echo "Please provide a custom directory name as second argument"
       return 1
     fi
-    
+
     dir_name="${repo_name}-worktrees"
   fi
-  
+
   # Check if directory already exists
   if [[ -e "$dir_name" ]]; then
     echo "❌ Error: Directory '$dir_name' already exists"
     echo "Please choose a different name or remove the existing directory"
     return 1
   fi
-  
+
   # Store original directory for error recovery
   local original_dir="$(pwd)"
-  
+
   # Start setup process
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "🌳 Worktree Directory Setup"
@@ -94,14 +94,14 @@ function worktree_dir() {
   echo "📂 Location: $original_dir/$dir_name"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  
+
   # Create parent directory
   echo "📂 Creating directory structure..."
   if ! mkdir "$dir_name"; then
     echo "❌ Error: Failed to create directory '$dir_name'"
     return 1
   fi
-  
+
   # Navigate into the new directory
   if ! cd "$dir_name"; then
     echo "❌ Error: Failed to access directory '$dir_name'"
@@ -109,10 +109,10 @@ function worktree_dir() {
     cd "$original_dir"
     return 1
   fi
-  
+
   echo "✅ Directory created"
   echo ""
-  
+
   # Clone as bare repository
   echo "📥 Cloning bare repository..."
   if ! git clone --bare "$git_url" .bare; then
@@ -122,10 +122,10 @@ function worktree_dir() {
     rm -rf "$dir_name"
     return 1
   fi
-  
+
   echo "✅ Bare repository cloned"
   echo ""
-  
+
   # Create .git pointer file
   echo "🔗 Configuring git pointer..."
   if ! echo "gitdir: ./.bare" > .git; then
@@ -134,10 +134,10 @@ function worktree_dir() {
     rm -rf "$dir_name"
     return 1
   fi
-  
+
   echo "✅ Git pointer configured"
   echo ""
-  
+
   # Configure fetch settings
   echo "⚙️  Configuring fetch settings..."
   if ! git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"; then
@@ -146,10 +146,10 @@ function worktree_dir() {
     rm -rf "$dir_name"
     return 1
   fi
-  
+
   echo "✅ Fetch settings configured"
   echo ""
-  
+
   # Fetch all branches
   echo "🔄 Fetching branches..."
   if ! git fetch; then
@@ -158,10 +158,10 @@ function worktree_dir() {
     rm -rf "$dir_name"
     return 1
   fi
-  
+
   echo "✅ Branches fetched"
   echo ""
-  
+
   # Add main worktree
   echo "🌳 Creating main worktree..."
   if ! git worktree add main; then
@@ -170,10 +170,10 @@ function worktree_dir() {
     rm -rf "$dir_name"
     return 1
   fi
-  
+
   echo "✅ Main worktree created"
   echo ""
-  
+
   # Success message
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "🎉 Worktree directory setup complete!"
@@ -184,10 +184,9 @@ function worktree_dir() {
   echo "  1. cd $dir_name/main"
   echo "  2. Copy your config files (*.env, certs) into the main directory"
   echo "  3. Run 'yarn install' or 'npm install'"
-  echo "  4. Create new worktrees: git worktree add <branch-name>"
-  echo "  5. Use 'worktree_setup <branch-name>' to set up additional worktrees"
+  echo "  4. Create additional worktrees with 'worktree setup <branch-name>'"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  
+
   # Return to original directory
   cd "$original_dir"
 }
