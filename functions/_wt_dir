@@ -140,7 +140,7 @@ function _wt_dir() {
 
   # Configure fetch settings
   echo "⚙️  Configuring fetch settings..."
-  if ! git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"; then
+  if ! git config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"; then
     echo "❌ Error: Failed to configure fetch settings"
     cd "$original_dir"
     rm -rf "$dir_name"
@@ -178,15 +178,14 @@ function _wt_dir() {
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "🎉 Worktree directory setup complete!"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📂 Location: $(pwd)"
+  echo "📂 Location: $original_dir/$dir_name/main"
   echo ""
   echo "Next steps:"
-  echo "  1. cd $dir_name/main"
-  echo "  2. Copy your config files (*.env, certs) into the main directory"
-  echo "  3. Run 'yarn install' or 'npm install'"
-  echo "  4. Create additional worktrees with 'worktree setup <branch-name>'"
+  echo "  1. Copy your config files (*.env, certs) into the main directory"
+  echo "  2. Run 'yarn install' or 'npm install'"
+  echo "  3. Create additional worktrees with 'worktree setup <branch-name>'"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  # Return to original directory
-  cd "$original_dir"
+  # Navigate into main worktree
+  cd "$original_dir/$dir_name/main"
 }
