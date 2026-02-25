@@ -14,7 +14,7 @@ function worktree() {
       echo ""
       echo "Subcommands:"
       echo "  setup   Create a new worktree"
-      echo "  remove  Remove a worktree"
+      echo "  remove  Remove a worktree (-y to skip prompts, supports wildcards)"
       echo "  list    List all worktrees"
       echo "  pull    Pull latest changes with stash/unstash"
       echo "  dir     Initialize bare repo directory structure"

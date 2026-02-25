@@ -1,0 +1,117 @@
+# Remove multiple worktrees matching a glob pattern (e.g. "pr-*")
+function _wt_remove_glob() {
+  local force_yes="$1"
+  local pattern="$2"
+
+  # Get all worktree names (excluding main)
+  local -a all_worktrees
+  all_worktrees=($(git worktree list --porcelain | \
+    grep '^worktree ' | \
+    awk '{print $2}' | \
+    xargs -n1 basename | \
+    grep -v '^main$'))
+
+  if [[ ${#all_worktrees[@]} -eq 0 ]]; then
+    echo "❌ No removable worktrees found (main worktree is protected)"
+    return 1
+  fi
+
+  # Match worktrees against the glob pattern
+  local -a matched
+  for wt in "${all_worktrees[@]}"; do
+    # Use zsh glob matching (case-sensitive)
+    if [[ "$wt" == ${~pattern} ]]; then
+      matched+=("$wt")
+    fi
+  done
+
+  if [[ ${#matched[@]} -eq 0 ]]; then
+    echo "❌ No worktrees match pattern '$pattern'"
+    return 1
+  fi
+
+  # Display matched worktrees
+  echo "🌳 Worktrees matching '$pattern':"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  for wt in "${matched[@]}"; do
+    echo "   - $wt"
+  done
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  if [[ "$force_yes" != true ]]; then
+    echo "⚠️  Remove all ${#matched[@]} worktree(s) listed above? (y/N)"
+    read -r response
+
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+      echo "❌ Cancelled"
+      return 0
+    fi
+
+    echo ""
+    echo "⚠️  Also delete the associated branches? (Y/n)"
+    read -r delete_branches_response
+    local delete_branches=true
+    if [[ "$delete_branches_response" =~ ^[Nn]$ ]]; then
+      delete_branches=false
+    fi
+  else
+    echo "⚡ Removing ${#matched[@]} worktree(s) and branches (-y)..."
+    local delete_branches=true
+  fi
+
+  local worktrees_dir=$(_get_worktree_root)
+  local removed=0
+  local failed=0
+
+  # If CWD is inside any of the worktrees being removed, navigate to main first
+  for wt in "${matched[@]}"; do
+    if [[ "$(pwd)" == "$worktrees_dir/$wt"* ]]; then
+      echo "📂 Navigating to main worktree before removal..."
+      cd "$worktrees_dir/main" || {
+        echo "❌ Error: Cannot navigate away from worktree being removed"
+        return 1
+      }
+      break
+    fi
+  done
+
+  # Remove each matched worktree
+  for wt in "${matched[@]}"; do
+    # Get the branch name before removing
+    local branch_name=$(git worktree list --porcelain | \
+      grep -A 2 "worktree.*/${wt}$" | \
+      awk '/^branch/ { sub(/^refs\/heads\//, "", $2); print $2; exit }')
+
+    if git worktree remove "$worktrees_dir/$wt" 2>/dev/null; then
+      echo "✅ Removed worktree '$wt'"
+      ((removed++))
+
+      # Delete the associated branch if requested
+      if [[ "$delete_branches" == true && -n "$branch_name" ]] && \
+         git show-ref --verify --quiet "refs/heads/$branch_name"; then
+        if git branch -d "$branch_name" 2>/dev/null; then
+          echo "   🌿 Branch '$branch_name' deleted"
+        else
+          if git branch -D "$branch_name" 2>/dev/null; then
+            echo "   🌿 Branch '$branch_name' force deleted (had unmerged changes)"
+          else
+            echo "   ⚠️  Could not delete branch '$branch_name'"
+          fi
+        fi
+      fi
+    else
+      echo "❌ Failed to remove worktree '$wt'"
+      ((failed++))
+    fi
+  done
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📊 Removed $removed of ${#matched[@]} worktree(s)"
+  if [[ $failed -gt 0 ]]; then
+    echo "   ($failed failed — try 'git worktree remove <name> --force' for stubborn ones)"
+  fi
+
+  return 0
+}

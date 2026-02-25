@@ -44,7 +44,9 @@ function _wt_setup() {
   fi
 
   # Get the worktree root directory dynamically
-  local worktrees_dir=$(_get_worktree_root)
+  # Note: declare and assign separately so $? reflects the function, not 'local'
+  local worktrees_dir
+  worktrees_dir=$(_get_worktree_root)
   if [[ $? -ne 0 ]]; then
     echo "⚠️  Warning: Could not auto-detect worktree root"
     echo "Using current directory: $worktrees_dir"

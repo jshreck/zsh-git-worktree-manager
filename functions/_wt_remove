@@ -1,5 +1,17 @@
-# Remove a worktree with confirmation
+# Remove a worktree with confirmation (supports wildcards, e.g. "pr-*")
+# Usage: worktree remove [-y] [worktree_name|pattern]
+#   -y  Skip all confirmation prompts (auto-yes)
 function _wt_remove() {
+  local force_yes=false
+
+  # Parse flags
+  while [[ "$1" == -* ]]; do
+    case "$1" in
+      -y) force_yes=true; shift ;;
+      *)  echo "❌ Unknown option: $1"; return 1 ;;
+    esac
+  done
+
   local worktree_name="$1"
 
   # If no argument provided, show interactive selection menu
@@ -43,6 +55,12 @@ function _wt_remove() {
     fi
   fi
 
+  # Check if the argument contains wildcard characters
+  if [[ "$worktree_name" == *[\*\?\[]* ]]; then
+    _wt_remove_glob "$force_yes" "$worktree_name"
+    return $?
+  fi
+
   # Protect main worktree from deletion
   if [[ "$worktree_name" == "main" ]]; then
     echo "❌ Error: Cannot remove 'main' worktree - it is protected"
@@ -68,19 +86,27 @@ function _wt_remove() {
     grep -A 2 "worktree.*/${worktree_name}$" | \
     awk '/^branch/ { sub(/^refs\/heads\//, "", $2); print $2; exit }')
 
-  echo "⚠️  Are you sure you want to remove worktree '$worktree_name'? (y/N)"
-  read -r response
+  if [[ "$force_yes" != true ]]; then
+    echo "⚠️  Are you sure you want to remove worktree '$worktree_name'? (y/N)"
+    read -r response
+  else
+    local response="y"
+  fi
 
   if [[ "$response" =~ ^[Yy]$ ]]; then
-    if git worktree remove "$worktree_name"; then
+    if git worktree remove "$worktrees_dir/$worktree_name"; then
       echo "✅ Worktree '$worktree_name' removed"
 
       # Check if the branch still exists and offer to delete it
       if [[ -n "$branch_name" ]] && git show-ref --verify --quiet "refs/heads/$branch_name"; then
         echo ""
         echo "🌿 Branch '$branch_name' still exists."
-        echo "⚠️  Do you want to delete the branch '$branch_name'? (Y/n)"
-        read -r branch_response
+        if [[ "$force_yes" != true ]]; then
+          echo "⚠️  Do you want to delete the branch '$branch_name'? (Y/n)"
+          read -r branch_response
+        else
+          local branch_response="y"
+        fi
 
         if [[ -z "$branch_response" || "$branch_response" =~ ^[Yy]$ ]]; then
           # Try normal deletion first
@@ -89,8 +115,12 @@ function _wt_remove() {
           else
             # If normal deletion fails, offer force deletion
             echo "⚠️  Branch '$branch_name' has unmerged changes."
-            echo "   Force delete? This will permanently lose any unmerged commits. (y/N)"
-            read -r force_response
+            if [[ "$force_yes" != true ]]; then
+              echo "   Force delete? This will permanently lose any unmerged commits. (y/N)"
+              read -r force_response
+            else
+              local force_response="y"
+            fi
 
             if [[ "$force_response" =~ ^[Yy]$ ]]; then
               if git branch -D "$branch_name"; then

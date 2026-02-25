@@ -56,8 +56,9 @@ function _wt_pr() {
 
   # Setup variables
   local local_branch_name="pr-$remote_branch_name"
-  local worktrees_dir=$(_get_worktree_root)
-
+  # Note: declare and assign separately so $? reflects the function, not 'local'
+  local worktrees_dir
+  worktrees_dir=$(_get_worktree_root)
   if [[ $? -ne 0 ]]; then
     echo "⚠️  Warning: Could not auto-detect worktree root"
     echo "Using current directory: $worktrees_dir"
