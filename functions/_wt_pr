@@ -171,6 +171,16 @@ function _wt_pr() {
   # Navigate to new worktree (intentional persistent cd)
   cd "$worktrees_dir/$local_branch_name" || return 1
 
+  # Run Claude code review
+  echo ""
+  echo "🤖 Running Claude code review..."
+  if command -v claude &>/dev/null; then
+    claude --dangerously-skip-permissions "/code-review:code-review"
+  else
+    echo "⚠️  Warning: Claude CLI not installed, skipping code review"
+    echo "   Install it from: https://docs.anthropic.com/en/docs/claude-code"
+  fi
+
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "🎉 PR Review worktree ready!"
