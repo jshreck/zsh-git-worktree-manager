@@ -156,6 +156,8 @@ function _wt_pr() {
     echo "⚠️  No configuration files found"
   fi
 
+  _wt_symlink_shared_files "$worktrees_dir" "$local_branch_name"
+
   # Install dependencies (subshell: CWD change is scoped)
   # HUSKY_SKIP_INSTALL=true prevents Husky from overwriting shared .bare/hooks/
   # on every worktree creation, which would break hooks when the worktree is removed.

@@ -1,0 +1,45 @@
+# Symlink shared local files (CLAUDE.local.md, .claude/settings.local.json) from main
+# Usage: _wt_symlink_shared_files <worktrees_dir> <branch_name>
+function _wt_symlink_shared_files() {
+  local worktrees_dir="$1"
+  local branch_name="$2"
+
+  # Symlink CLAUDE.local.md from main
+  echo ""
+  echo "🔗 Linking CLAUDE.local.md..."
+  local claude_local_src="$worktrees_dir/main/CLAUDE.local.md"
+
+  if [[ ! -f "$claude_local_src" ]]; then
+    touch "$claude_local_src"
+    echo "   Created empty CLAUDE.local.md in main"
+  fi
+
+  if ln -sf "../main/CLAUDE.local.md" "$worktrees_dir/$branch_name/CLAUDE.local.md"; then
+    echo "✅ CLAUDE.local.md symlinked → main/CLAUDE.local.md"
+  else
+    echo "⚠️  Warning: Failed to symlink CLAUDE.local.md"
+  fi
+
+  # Symlink .claude/settings.local.json from main
+  echo ""
+  echo "🔗 Linking .claude/settings.local.json..."
+  local settings_local_src="$worktrees_dir/main/.claude/settings.local.json"
+
+  if [[ ! -f "$settings_local_src" ]]; then
+    mkdir -p "$worktrees_dir/main/.claude"
+    touch "$settings_local_src"
+    echo "   Created empty .claude/settings.local.json in main"
+  fi
+
+  mkdir -p "$worktrees_dir/$branch_name/.claude"
+  local settings_local_dest="$worktrees_dir/$branch_name/.claude/settings.local.json"
+  if [[ -f "$settings_local_dest" && ! -L "$settings_local_dest" ]]; then
+    echo "⚠️  Real file exists at .claude/settings.local.json — backing up to .claude/settings.local.json.bak"
+    mv "$settings_local_dest" "${settings_local_dest}.bak"
+  fi
+  if ln -sf "../../main/.claude/settings.local.json" "$settings_local_dest"; then
+    echo "✅ .claude/settings.local.json symlinked → main/.claude/settings.local.json"
+  else
+    echo "⚠️  Warning: Failed to symlink .claude/settings.local.json"
+  fi
+}
