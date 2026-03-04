@@ -28,7 +28,7 @@ function _wt_pull() {
   # Check if branch has a remote tracking branch
   if ! git rev-parse --abbrev-ref --symbolic-full-name @{u} &>/dev/null; then
     echo "⚠️  Warning: Branch '$current_branch' has no remote tracking branch"
-    echo "   You can set upstream with: git push -u origin $current_branch"
+    echo "   Fix with: git branch --set-upstream-to=origin/$current_branch"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     return 1
   fi

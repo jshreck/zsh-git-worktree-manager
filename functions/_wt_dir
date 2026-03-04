@@ -193,6 +193,15 @@ function _wt_dir() {
   echo "✅ Main worktree created"
   echo ""
 
+  # Set upstream tracking for the main worktree branch
+  echo "🔗 Setting upstream tracking for $base_branch..."
+  if (cd "$worktrees_dir/main" && git branch --set-upstream-to="origin/$base_branch"); then
+    echo "✅ Upstream set to origin/$base_branch"
+  else
+    echo "⚠️  Warning: Failed to set upstream tracking for $base_branch"
+  fi
+  echo ""
+
   # Install dependencies
   if [[ "$skip_yarn" == false ]]; then
     echo "📦 Installing dependencies..."
