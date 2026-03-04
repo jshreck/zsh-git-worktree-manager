@@ -1,59 +1,78 @@
 function _wt_dir() {
-  # Parse arguments
+  local skip_yarn=false
   local git_url=""
   local dir_name=""
 
-  # Check for help flag
-  if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🌳 Worktree Directory Setup"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Create a new worktree-based project using a bare repository structure."
-    echo ""
-    echo "Usage:"
-    echo "  worktree dir <git-clone-url> [custom-directory-name]"
-    echo ""
-    echo "Arguments:"
-    echo "  git-clone-url              Git repository URL (SSH or HTTPS)"
-    echo "  custom-directory-name      Optional custom name for the parent directory"
-    echo "                             If not provided, uses {repo-name}-worktrees"
-    echo ""
-    echo "Examples:"
-    echo "  # Auto-generate directory name"
-    echo "  worktree dir git@github.com:user/my-repo.git"
-    echo "  # Creates: ./my-repo-worktrees/"
-    echo ""
-    echo "  # Use custom directory name"
-    echo "  worktree dir git@github.com:user/my-repo.git custom-project"
-    echo "  # Creates: ./custom-project/"
-    echo ""
-    echo "What this does:"
-    echo "  1. Creates parent directory in current location"
-    echo "  2. Clones repository as bare repo into .bare/"
-    echo "  3. Configures .git pointer file"
-    echo "  4. Sets up fetch/pull configuration"
-    echo "  5. Creates 'main' worktree"
-    echo ""
-    echo "After creation, run 'worktree setup' to copy config files and install dependencies."
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    return 0
-  fi
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+      --skip-yarn) skip_yarn=true; shift ;;
+      --help|-h)
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "🌳 Worktree Directory Setup"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Create a new worktree-based project using a bare repository structure."
+        echo ""
+        echo "Usage:"
+        echo "  worktree dir [options] <git-clone-url> [custom-directory-name]"
+        echo ""
+        echo "Arguments:"
+        echo "  git-clone-url              Git repository URL (SSH or HTTPS)"
+        echo "  custom-directory-name      Optional custom name for the parent directory"
+        echo "                             If not provided, uses {repo-name}-worktrees"
+        echo ""
+        echo "Options:"
+        echo "  --skip-yarn    Skip yarn install after creating main worktree"
+        echo ""
+        echo "Examples:"
+        echo "  # Auto-generate directory name"
+        echo "  worktree dir git@github.com:user/my-repo.git"
+        echo "  # Creates: ./my-repo-worktrees/"
+        echo ""
+        echo "  # Use custom directory name"
+        echo "  worktree dir git@github.com:user/my-repo.git custom-project"
+        echo "  # Creates: ./custom-project/"
+        echo ""
+        echo "  # Skip yarn install"
+        echo "  worktree dir --skip-yarn git@github.com:user/my-repo.git"
+        echo ""
+        echo "What this does:"
+        echo "  1. Creates parent directory in current location"
+        echo "  2. Clones repository as bare repo into .bare/"
+        echo "  3. Configures .git pointer file"
+        echo "  4. Sets up fetch/pull configuration"
+        echo "  5. Creates 'main' worktree"
+        echo "  6. Runs yarn install (unless --skip-yarn)"
+        echo ""
+        echo "After creation, use 'worktree setup <branch-name>' to create additional worktrees."
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        return 0
+        ;;
+      *)
+        if [[ -z "$git_url" ]]; then
+          git_url="$1"
+        elif [[ -z "$dir_name" ]]; then
+          dir_name="$1"
+        else
+          echo "❌ Error: Too many arguments"
+          echo "Usage: worktree dir [options] <git-clone-url> [custom-directory-name]"
+          return 1
+        fi
+        shift
+        ;;
+    esac
+  done
 
   # Validate arguments
-  if [[ -z "$1" ]]; then
+  if [[ -z "$git_url" ]]; then
     echo "❌ Error: Git repository URL required"
     echo "Usage: worktree dir <git-clone-url> [custom-directory-name]"
     echo "Run 'worktree dir --help' for more information"
     return 1
   fi
 
-  git_url="$1"
-
   # Extract repository name from URL if custom name not provided
-  if [[ -n "$2" ]]; then
-    dir_name="$2"
-  else
+  if [[ -z "$dir_name" ]]; then
     # Extract repo name from various URL formats:
     # git@github.com:user/repo.git -> repo
     # https://github.com/user/repo.git -> repo
@@ -174,6 +193,20 @@ function _wt_dir() {
   echo "✅ Main worktree created"
   echo ""
 
+  # Install dependencies
+  if [[ "$skip_yarn" == false ]]; then
+    echo "📦 Installing dependencies..."
+    if (cd "$original_dir/$dir_name/main" && HUSKY_SKIP_INSTALL=true yarn install); then
+      echo "✅ Dependencies installed"
+    else
+      echo "❌ Warning: yarn install failed"
+      echo "   You may need to run 'yarn install' manually"
+    fi
+  else
+    echo "⏭️  Skipping yarn install (--skip-yarn flag set)"
+  fi
+  echo ""
+
   # Success message
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "🎉 Worktree directory setup complete!"
@@ -182,8 +215,12 @@ function _wt_dir() {
   echo ""
   echo "Next steps:"
   echo "  1. Copy your config files (*.env, certs) into the main directory"
-  echo "  2. Run 'yarn install' or 'npm install'"
-  echo "  3. Create additional worktrees with 'worktree setup <branch-name>'"
+  if [[ "$skip_yarn" == true ]]; then
+    echo "  2. Run 'yarn install' manually"
+    echo "  3. Create additional worktrees with 'worktree setup <branch-name>'"
+  else
+    echo "  2. Create additional worktrees with 'worktree setup <branch-name>'"
+  fi
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
   # Navigate into main worktree
