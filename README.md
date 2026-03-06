@@ -30,7 +30,7 @@ An Oh-My-Zsh plugin for managing git worktrees with ease. Streamline your workfl
 ```bash
 # Clone the repository
 cd ~/GitHub
-git clone git@github.com:YOUR-USERNAME/zsh-git-worktree-manager.git
+git clone git@github.com:tmbtech/zsh-git-worktree-manager.git
 
 # Create symlink to Oh-My-Zsh custom plugins directory
 ln -s ~/GitHub/zsh-git-worktree-manager ~/.oh-my-zsh/custom/plugins/git-worktree-manager
@@ -246,15 +246,15 @@ Contributions are welcome! Here's how you can help:
 
 ### Commit Format
 
-We use Commitizen format for commits:
+We use [Conventional Commits](https://www.conventionalcommits.org/) format:
 
 ```
-<type>(<scope>): <description> <ticket-reference>
+<type>(<scope>): <description>
 
 Example:
-feat(worktree): add support for custom config files PLTW-123
-fix(pr-review): handle edge case with branch names PLTW-456
-docs: update installation instructions PLTW-000
+feat(worktree): add support for custom config files
+fix(pr-review): handle edge case with branch names
+docs: update installation instructions
 ```
 
 ## 📝 License

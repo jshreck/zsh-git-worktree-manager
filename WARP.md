@@ -139,12 +139,12 @@ Uses `find` with `-prune` to exclude node_modules, then `tar` for atomic copying
 - Oh-My-Zsh framework
 
 ### Commit Format
-When contributing, use Commitizen format as specified in the README:
+When contributing, use Conventional Commits format as specified in the README:
 ```
-<type>(<scope>): <description> <ticket-reference>
+<type>(<scope>): <description>
 
 Example:
-feat(worktree): add support for custom config files PLTW-123
+feat(worktree): add support for custom config files
 ```
 
 ### Protected Operations
