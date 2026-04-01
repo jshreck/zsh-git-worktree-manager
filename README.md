@@ -30,7 +30,7 @@ An Oh-My-Zsh plugin for managing git worktrees with ease. Streamline your workfl
 ```bash
 # Clone the repository
 cd ~/GitHub
-git clone git@github.com:tmbtech/zsh-git-worktree-manager.git
+git clone https://github.com/tmbtech/zsh-git-worktree-manager.git
 
 # Create symlink to Oh-My-Zsh custom plugins directory
 ln -s ~/GitHub/zsh-git-worktree-manager ~/.oh-my-zsh/custom/plugins/git-worktree-manager
@@ -60,11 +60,11 @@ Initialize a new repository with bare repository worktree structure:
 
 ```bash
 # Auto-generate directory name (creates {repo-name}-worktrees)
-worktree dir git@github.com:user/my-repo.git
+worktree dir https://github.com/user/my-repo.git
 # Creates: ./my-repo-worktrees/
 
 # Use custom directory name
-worktree dir git@github.com:user/my-repo.git custom-project
+worktree dir https://github.com/user/my-repo.git custom-project
 # Creates: ./custom-project/
 
 # Works with HTTPS URLs too

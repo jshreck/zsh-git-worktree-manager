@@ -26,15 +26,15 @@ function _wt_dir() {
         echo ""
         echo "Examples:"
         echo "  # Auto-generate directory name"
-        echo "  worktree dir git@github.com:user/my-repo.git"
+        echo "  worktree dir https://github.com/user/my-repo.git"
         echo "  # Creates: ./my-repo-worktrees/"
         echo ""
         echo "  # Use custom directory name"
-        echo "  worktree dir git@github.com:user/my-repo.git custom-project"
+        echo "  worktree dir https://github.com/user/my-repo.git custom-project"
         echo "  # Creates: ./custom-project/"
         echo ""
         echo "  # Skip yarn install"
-        echo "  worktree dir --skip-yarn git@github.com:user/my-repo.git"
+        echo "  worktree dir --skip-yarn https://github.com/user/my-repo.git"
         echo ""
         echo "What this does:"
         echo "  1. Creates parent directory in current location"
@@ -74,7 +74,7 @@ function _wt_dir() {
   # Extract repository name from URL if custom name not provided
   if [[ -z "$dir_name" ]]; then
     # Extract repo name from various URL formats:
-    # git@github.com:user/repo.git -> repo
+    # https://github.com/user/repo.git -> repo
     # https://github.com/user/repo.git -> repo
     # https://github.com/user/repo -> repo
     local repo_name=""
