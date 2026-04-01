@@ -1,0 +1,100 @@
+function _wt_tui() {
+  local tui_bin action
+
+  # Only look for the binary in the plugin directory (not PATH) to prevent
+  # executing an untrusted binary placed earlier in $PATH.
+  if [[ -x "${PLUGIN_DIR}/bin/worktree-tui" ]]; then
+    tui_bin="${PLUGIN_DIR}/bin/worktree-tui"
+  else
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  ⚠️  TUI binary not found."
+    echo ""
+    echo "  Build it from source:"
+    echo "    cd ${PLUGIN_DIR}/tui && go build -o ../bin/worktree-tui ./cmd/worktree-tui/"
+    echo ""
+    echo "  Or download a pre-built release."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    return 1
+  fi
+
+  # Collect data and pipe to the TUI binary.
+  action="$(_wt_tui_data | "$tui_bin")"
+  local exit_code=$?
+
+  if [[ $exit_code -eq 2 ]]; then
+    echo "❌ Error: failed to collect worktree data." >&2
+    return 1
+  fi
+
+  if [[ $exit_code -ne 0 ]]; then
+    # User quit without selecting.
+    return 0
+  fi
+
+  # Dispatch the selected action.
+  case "$action" in
+    setup)
+      local branch_name
+      echo ""
+      printf "Branch name: "
+      read -r branch_name
+      if [[ -n "$branch_name" ]]; then
+        _wt_setup "$branch_name"
+      fi
+      ;;
+    remove)
+      _wt_remove
+      ;;
+    list)
+      _wt_list
+      ;;
+    pull)
+      _wt_pull
+      ;;
+    review)
+      local pr_url
+      echo ""
+      printf "GitHub PR URL: "
+      read -r pr_url
+      if [[ -n "$pr_url" ]]; then
+        _wt_pr "$pr_url"
+      fi
+      ;;
+    dir)
+      local git_url dir_name
+      echo ""
+      printf "Git URL: "
+      read -r git_url
+      if [[ -n "$git_url" ]]; then
+        printf "Directory name (optional): "
+        read -r dir_name
+        if [[ -n "$dir_name" ]]; then
+          _wt_dir "$git_url" "$dir_name"
+        else
+          _wt_dir "$git_url"
+        fi
+      fi
+      ;;
+    navigate:*)
+      local wt_name="${action#navigate:}"
+      # Validate against known worktrees using exact string comparison (no globs).
+      local known_worktrees found=0 known
+      known_worktrees=($(git worktree list --porcelain 2>/dev/null | grep '^worktree ' | awk '{print $2}' | xargs -n1 basename))
+      for known in "${known_worktrees[@]}"; do
+        if [[ "$known" == "$wt_name" ]]; then
+          found=1
+          break
+        fi
+      done
+      if (( !found )); then
+        echo "❌ Unknown worktree: ${wt_name}" >&2
+        return 1
+      fi
+      wt "$wt_name"
+      ;;
+    *)
+      echo "Unknown action: $action"
+      return 1
+      ;;
+  esac
+}

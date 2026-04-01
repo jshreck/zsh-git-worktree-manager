@@ -36,6 +36,7 @@ _worktree() {
         'pull:Pull latest changes with stash/unstash'
         'dir:Initialize bare repo directory structure'
         'review:Review a GitHub PR in a new worktree'
+        'tui:Open interactive TUI'
       )
       _describe 'subcommand' subcommands
       ;;

@@ -1,0 +1,114 @@
+function _wt_tui_data() {
+  local root current_dir repo_name in_worktree has_gh
+  local -a worktree_entries
+
+  # Detect worktree root.
+  root="$(_get_worktree_root 2>/dev/null)"
+  if [[ -z "$root" ]]; then
+    echo '{"root":"","worktrees":[],"current_dir":"","in_worktree":false,"has_gh":false,"repo_name":""}'
+    return 0
+  fi
+
+  current_dir="$(pwd)"
+  repo_name="$(basename "$root")"
+
+  # Determine if we are inside a worktree.
+  if git rev-parse --is-inside-work-tree &>/dev/null; then
+    in_worktree="true"
+  else
+    in_worktree="false"
+  fi
+
+  # Check for GitHub CLI.
+  if command -v gh &>/dev/null; then
+    has_gh="true"
+  else
+    has_gh="false"
+  fi
+
+  # Parse worktrees from porcelain output.
+  local wt_path wt_head wt_branch wt_name is_bare is_current first
+  first="true"
+
+  printf '{"root":"%s","current_dir":"%s","repo_name":"%s","in_worktree":%s,"has_gh":%s,"worktrees":[' \
+    "$(_json_escape "$root")" \
+    "$(_json_escape "$current_dir")" \
+    "$(_json_escape "$repo_name")" \
+    "$in_worktree" \
+    "$has_gh"
+
+  while IFS= read -r line; do
+    case "$line" in
+      worktree\ *)
+        # Emit the previous entry if we have one.
+        if [[ -n "$wt_path" ]]; then
+          _wt_tui_emit_entry "$first" "$wt_path" "$wt_head" "$wt_branch" "$wt_name" "$is_bare" "$is_current"
+          first="false"
+        fi
+        wt_path="${line#worktree }"
+        wt_name="$(basename "$wt_path")"
+        wt_head=""
+        wt_branch=""
+        is_bare="false"
+        is_current="false"
+        if [[ "$wt_path" == "$current_dir" ]]; then
+          is_current="true"
+        fi
+        ;;
+      HEAD\ *)
+        wt_head="${line#HEAD }"
+        ;;
+      branch\ *)
+        wt_branch="${line#branch refs/heads/}"
+        ;;
+      bare)
+        is_bare="true"
+        ;;
+    esac
+  done < <(git worktree list --porcelain 2>/dev/null)
+
+  # Emit the last entry.
+  if [[ -n "$wt_path" ]]; then
+    _wt_tui_emit_entry "$first" "$wt_path" "$wt_head" "$wt_branch" "$wt_name" "$is_bare" "$is_current"
+  fi
+
+  printf ']}\n'
+}
+
+# Emit a single worktree JSON entry.
+_wt_tui_emit_entry() {
+  local first="$1" path="$2" head="$3" branch="$4" name="$5" is_bare="$6" is_current="$7"
+
+  if [[ "$first" != "true" ]]; then
+    printf ','
+  fi
+
+  printf '{"name":"%s","path":"%s","branch":"%s","head":"%s","is_bare":%s,"is_current":%s}' \
+    "$(_json_escape "$name")" \
+    "$(_json_escape "$path")" \
+    "$(_json_escape "$branch")" \
+    "$(_json_escape "$head")" \
+    "$is_bare" \
+    "$is_current"
+}
+
+# Escape a string for safe inclusion in a JSON value (RFC 8259 compliant).
+_json_escape() {
+  local s="$1"
+  # Backslash must be escaped first.
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  # Named control characters.
+  s="${s//$'\b'/\\b}"
+  s="${s//$'\f'/\\f}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  # Remaining C0 control characters (U+0000-U+001F) not covered above.
+  local i hex
+  for i in 0 1 2 3 4 5 6 7 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31; do
+    printf -v hex '\\u%04x' "$i"
+    eval "s=\"\${s//\$'\\x$(printf '%02x' "$i")'/$hex}\""
+  done
+  printf '%s' "$s"
+}

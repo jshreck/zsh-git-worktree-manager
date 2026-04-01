@@ -9,17 +9,24 @@ function worktree() {
     pull)   _wt_pull "$@" ;;
     dir)    _wt_dir "$@" ;;
     review) _wt_pr "$@" ;;
+    tui)    _wt_tui "$@" ;;
     *)
-      echo "Usage: worktree <subcommand> [args]"
-      echo ""
-      echo "Subcommands:"
-      echo "  setup   Create a new worktree"
-      echo "  remove  Remove a worktree (-y to skip prompts, supports wildcards)"
-      echo "  list    List all worktrees"
-      echo "  pull    Pull latest changes with stash/unstash"
-      echo "  dir     Initialize bare repo directory structure"
-      echo "  review  Review a GitHub PR in a new worktree"
-      return 1
+      # Launch TUI if binary is available; otherwise show usage.
+      if [[ -x "${PLUGIN_DIR}/bin/worktree-tui" ]]; then
+        _wt_tui "$@"
+      else
+        echo "Usage: worktree <subcommand> [args]"
+        echo ""
+        echo "Subcommands:"
+        echo "  setup   Create a new worktree"
+        echo "  remove  Remove a worktree (-y to skip prompts, supports wildcards)"
+        echo "  list    List all worktrees"
+        echo "  pull    Pull latest changes with stash/unstash"
+        echo "  dir     Initialize bare repo directory structure"
+        echo "  review  Review a GitHub PR in a new worktree"
+        echo "  tui     Open interactive TUI"
+        return 1
+      fi
       ;;
   esac
 }
