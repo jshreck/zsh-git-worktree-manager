@@ -10,6 +10,7 @@ function worktree() {
     dir)    _wt_dir "$@" ;;
     review) _wt_pr "$@" ;;
     tui)    _wt_tui "$@" ;;
+    clean)  _wt_clean "$@" ;;
     *)
       # Launch TUI if binary is available; otherwise show usage.
       if [[ -x "${PLUGIN_DIR}/bin/worktree-tui" ]]; then
@@ -25,6 +26,7 @@ function worktree() {
         echo "  dir     Initialize bare repo directory structure"
         echo "  review  Review a GitHub PR in a new worktree"
         echo "  tui     Open interactive TUI"
+        echo "  clean   Remove worktrees whose remote branch was deleted"
         return 1
       fi
       ;;

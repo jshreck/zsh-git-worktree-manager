@@ -37,6 +37,7 @@ _worktree() {
         'dir:Initialize bare repo directory structure'
         'review:Review a GitHub PR in a new worktree'
         'tui:Open interactive TUI'
+        'clean:Remove worktrees whose remote branch no longer exists'
       )
       _describe 'subcommand' subcommands
       ;;
@@ -52,6 +53,12 @@ _worktree() {
             return 1
           fi
           _arguments '1:worktree name:compadd -a worktrees'
+          ;;
+        clean)
+          _arguments \
+            '-y[Skip confirmation prompts]' \
+            '--dry-run[Show what would be removed without removing]' \
+            '--include-unpushed[Also remove worktrees with unpushed commits]'
           ;;
       esac
       ;;

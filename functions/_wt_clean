@@ -1,0 +1,191 @@
+# Remove worktrees whose remote branch no longer exists
+function _wt_clean() {
+  local force_yes=false
+  local dry_run=false
+  local include_unpushed=false
+
+  # Parse flags
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -y)                force_yes=true ;;
+      --dry-run)         dry_run=true ;;
+      --include-unpushed) include_unpushed=true ;;
+      *)
+        echo "❌ Unknown option: $1"
+        echo "Usage: worktree clean [-y] [--dry-run] [--include-unpushed]"
+        return 1
+        ;;
+    esac
+    shift
+  done
+
+  local worktrees_dir
+  worktrees_dir=$(_get_worktree_root)
+
+  if [[ ! -d "$worktrees_dir/main" ]]; then
+    echo "❌ Error: No 'main' worktree found in $worktrees_dir"
+    return 1
+  fi
+
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🧹 Worktree Clean"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # Fetch and prune to ensure remote-tracking refs are up to date
+  echo "🔄 Fetching remote and pruning deleted branches..."
+  if ! (cd "$worktrees_dir/main" && git fetch --prune origin 2>&1); then
+    echo "❌ Error: Failed to fetch from remote. Cannot determine stale worktrees without up-to-date remote info."
+    return 1
+  fi
+  echo "✅ Fetch complete"
+  echo ""
+
+  # Get all worktree names (excluding main)
+  local -a all_worktrees
+  all_worktrees=($(git worktree list --porcelain | \
+    grep '^worktree ' | \
+    awk '{print $2}' | \
+    xargs -n1 basename | \
+    grep -v '^main$'))
+
+  if [[ ${#all_worktrees[@]} -eq 0 ]]; then
+    echo "✅ No worktrees to clean (only main exists)"
+    return 0
+  fi
+
+  echo "🔍 Scanning ${#all_worktrees[@]} worktree(s)..."
+  echo ""
+
+  local -a removable=()
+  local -a skipped_remote=()
+  local -a skipped_dirty=()
+  local -a skipped_unpushed=()
+  local -a skipped_detached=()
+
+  for wt in "${all_worktrees[@]}"; do
+    local wt_path="$worktrees_dir/$wt"
+
+    # Extract branch name
+    local branch_name=$(git worktree list --porcelain | \
+      grep -A 2 "worktree.*/${wt}$" | \
+      awk '/^branch/ { sub(/^refs\/heads\//, "", $2); print $2; exit }')
+
+    # Skip detached HEAD worktrees
+    if [[ -z "$branch_name" ]]; then
+      skipped_detached+=("$wt")
+      echo "   ⏭️  $wt  (detached HEAD — skipped)"
+      continue
+    fi
+
+    # Check if remote branch still exists
+    if (cd "$worktrees_dir/main" && git show-ref --verify --quiet "refs/remotes/origin/$branch_name") 2>/dev/null; then
+      skipped_remote+=("$wt")
+      echo "   ✅ $wt  (remote branch exists — skipped)"
+      continue
+    fi
+
+    # Remote branch is gone — check for uncommitted changes
+    if [[ -d "$wt_path" ]] && [[ -n $(git -C "$wt_path" status --porcelain 2>/dev/null) ]]; then
+      skipped_dirty+=("$wt")
+      echo "   ⚠️  $wt  (remote branch gone, has uncommitted changes — skipped)"
+      continue
+    fi
+
+    # Check for unpushed commits
+    if [[ "$include_unpushed" != true ]] && [[ -d "$wt_path" ]]; then
+      local unpushed_count=$(git -C "$wt_path" cherry -v main 2>/dev/null | grep -c '^+')
+      if [[ "$unpushed_count" -gt 0 ]]; then
+        skipped_unpushed+=("$wt")
+        echo "   ⚠️  $wt  (remote branch gone, $unpushed_count unpushed commit(s) — skipped)"
+        continue
+      fi
+    fi
+
+    removable+=("$wt")
+    echo "   🗑️  $wt  (remote branch gone, clean)"
+  done
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  if [[ ${#removable[@]} -eq 0 ]]; then
+    echo "✅ No stale worktrees to clean"
+    return 0
+  fi
+
+  local skipped_total=$(( ${#skipped_dirty[@]} + ${#skipped_unpushed[@]} + ${#skipped_detached[@]} ))
+  echo "📊 Found ${#removable[@]} stale worktree(s) to remove, ${skipped_total} skipped"
+  echo ""
+
+  if [[ "$dry_run" == true ]]; then
+    echo "🏃 Dry run — no changes made"
+    return 0
+  fi
+
+  # Confirm removal
+  if [[ "$force_yes" != true ]]; then
+    echo "⚠️  Remove ${#removable[@]} worktree(s) and their branches? (y/N)"
+    read -r response
+
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+      echo "❌ Cancelled"
+      return 0
+    fi
+  else
+    echo "⚡ Removing ${#removable[@]} worktree(s) and branches (-y)..."
+  fi
+
+  echo ""
+
+  # If CWD is inside any worktree being removed, navigate to main first
+  for wt in "${removable[@]}"; do
+    if [[ "$(pwd)" == "$worktrees_dir/$wt"* ]]; then
+      echo "📂 Navigating to main worktree before removal..."
+      cd "$worktrees_dir/main" || {
+        echo "❌ Error: Cannot navigate away from worktree being removed"
+        return 1
+      }
+      break
+    fi
+  done
+
+  local removed=0
+  local failed=0
+
+  for wt in "${removable[@]}"; do
+    # Get the branch name before removing
+    local branch_name=$(git worktree list --porcelain | \
+      grep -A 2 "worktree.*/${wt}$" | \
+      awk '/^branch/ { sub(/^refs\/heads\//, "", $2); print $2; exit }')
+
+    if git worktree remove "$worktrees_dir/$wt" 2>/dev/null; then
+      echo "✅ Removed worktree '$wt'"
+      ((removed++))
+
+      # Delete the associated branch
+      if [[ -n "$branch_name" ]] && \
+         git show-ref --verify --quiet "refs/heads/$branch_name"; then
+        if git branch -D "$branch_name" 2>/dev/null; then
+          echo "   🌿 Branch '$branch_name' deleted"
+        else
+          echo "   ⚠️  Could not delete branch '$branch_name'"
+        fi
+      fi
+    else
+      echo "❌ Failed to remove worktree '$wt' (may be locked — try 'git worktree remove $wt --force')"
+      ((failed++))
+    fi
+  done
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  if [[ $failed -eq 0 ]]; then
+    echo "🎉 Cleaned $removed stale worktree(s)"
+  else
+    echo "📊 Removed $removed of ${#removable[@]} worktree(s) ($failed failed)"
+  fi
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  return 0
+}
