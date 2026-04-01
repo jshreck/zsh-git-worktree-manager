@@ -177,6 +177,34 @@ wt feature/my-feature
 wt <TAB>
 ```
 
+### worktree clean
+
+Remove stale worktrees whose remote branch has been deleted:
+
+```bash
+# Preview what would be removed
+worktree clean --dry-run
+
+# Remove stale worktrees (with confirmation)
+worktree clean
+
+# Skip confirmation prompt
+worktree clean -y
+
+# Also remove worktrees with unpushed commits (e.g. squash-merged PRs)
+worktree clean --include-unpushed
+
+# Show help
+worktree clean --help
+```
+
+**What it does:**
+1. Fetches from remote and prunes deleted branch refs
+2. Scans all worktrees (excluding protected "main")
+3. Identifies worktrees whose remote branch no longer exists
+4. Skips worktrees with uncommitted changes or unpushed commits
+5. Confirms removal, then deletes worktrees and their local branches
+
 ### worktree review
 
 Create a worktree from a GitHub PR for code review:

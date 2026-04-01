@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Updated tab completion** to support `worktree <TAB>` (lists all subcommands) and `worktree remove <TAB>` (lists worktree names)
 
 ### Added
+- **`worktree clean`** - Remove stale worktrees whose remote branch has been deleted
+  - Fetches and prunes remote refs before scanning
+  - Skips worktrees with uncommitted changes or unpushed commits
+  - `--dry-run` flag to preview what would be removed
+  - `-y` flag to skip confirmation prompts
+  - `--include-unpushed` flag for squash-merged PRs
+  - `--help` flag with usage documentation
+  - Tab completion for all flags
 - **Zsh completion system** for enhanced user experience
   - Tab completion for `worktree remove` command (excludes protected "main" worktree)
   - Tab completion for `wt` command (includes all worktrees)

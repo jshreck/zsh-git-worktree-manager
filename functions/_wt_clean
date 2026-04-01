@@ -10,6 +10,19 @@ function _wt_clean() {
       -y)                force_yes=true ;;
       --dry-run)         dry_run=true ;;
       --include-unpushed) include_unpushed=true ;;
+      --help|-h)
+        echo "Usage: worktree clean [-y] [--dry-run] [--include-unpushed]"
+        echo ""
+        echo "Remove worktrees whose remote branch no longer exists (e.g. after PR merge)."
+        echo "Skips worktrees with uncommitted changes or unpushed commits."
+        echo ""
+        echo "Options:"
+        echo "  -y                  Skip confirmation prompts"
+        echo "  --dry-run           Show what would be removed without removing"
+        echo "  --include-unpushed  Also remove worktrees with unpushed commits"
+        echo "  -h, --help          Show this help message"
+        return 0
+        ;;
       *)
         echo "❌ Unknown option: $1"
         echo "Usage: worktree clean [-y] [--dry-run] [--include-unpushed]"
